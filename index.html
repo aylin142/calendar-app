@@ -184,7 +184,7 @@
   #bottom-bar {
     position: relative; z-index: 100; flex-shrink: 0;
     background: transparent;
-    padding: 10px 20px 18px;
+    padding: 10px 20px 40px;
     display: flex; align-items: center; justify-content: center;
     border-top: 1px solid rgba(232,221,208,0.7);
   }
@@ -204,17 +204,19 @@
   }
   #nav-pill:active { transform: scale(0.88); opacity: 0.7; }
   @keyframes pillGoLeft {
-    0%   { transform: translateX(0) scale(1); }
-    35%  { transform: translateX(-14px) scale(0.90); }
-    100% { transform: translateX(0) scale(1); }
+    0%   { transform: translateX(0)    scaleX(1)    scaleY(1); }
+    28%  { transform: translateX(-22px) scaleX(1.22) scaleY(0.84); }
+    62%  { transform: translateX(5px)  scaleX(0.92) scaleY(1.05); }
+    100% { transform: translateX(0)    scaleX(1)    scaleY(1); }
   }
   @keyframes pillGoRight {
-    0%   { transform: translateX(0) scale(1); }
-    35%  { transform: translateX(14px) scale(0.90); }
-    100% { transform: translateX(0) scale(1); }
+    0%   { transform: translateX(0)    scaleX(1)    scaleY(1); }
+    28%  { transform: translateX(22px) scaleX(1.22) scaleY(0.84); }
+    62%  { transform: translateX(-5px) scaleX(0.92) scaleY(1.05); }
+    100% { transform: translateX(0)    scaleX(1)    scaleY(1); }
   }
-  #nav-pill.anim-left  { animation: pillGoLeft  0.32s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-  #nav-pill.anim-right { animation: pillGoRight 0.32s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  #nav-pill.anim-left  { animation: pillGoLeft  0.44s cubic-bezier(0.34,1.8,0.64,1) forwards; }
+  #nav-pill.anim-right { animation: pillGoRight 0.44s cubic-bezier(0.34,1.8,0.64,1) forwards; }
 
   /* ===== MODALS ===== */
   .modal-overlay {
@@ -1126,8 +1128,6 @@
         <div class="theme-swatch" data-color="#7A5A8A" style="background:#7A5A8A;" onclick="setThemeColorPreview('#7A5A8A',this)"></div>
         <div class="theme-swatch" data-color="#A0617A" style="background:#A0617A;" onclick="setThemeColorPreview('#A0617A',this)"></div>
         <div class="theme-swatch" data-color="#5A5A5A" style="background:#5A5A5A;" onclick="setThemeColorPreview('#5A5A5A',this)"></div>
-        <div class="custom-slot" id="theme-custom-0" title="点击保存当前主题色">+</div>
-        <div class="custom-slot" id="theme-custom-1" title="点击保存当前主题色">+</div>
       </div>
 
       <!-- Background color -->
@@ -2704,39 +2704,32 @@ function goToToday() {
 // ==================== NAV PILL ====================
 (function() {
   const pill = document.getElementById('nav-pill');
+  const SWIPE_THRESHOLD = 55;
   let startX = 0, hasSwiped = false, lastTouchTime = 0;
-  let pillLPTimer = null, pillLongPressed = false;
 
   pill.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
-    hasSwiped = false; pillLongPressed = false;
+    hasSwiped = false;
     pill.style.transition = 'none';
-    pillLPTimer = setTimeout(() => {
-      pillLongPressed = true;
-      loadProfile();
-      openModal('profile-modal');
-    }, 500);
   }, {passive: true});
 
   pill.addEventListener('touchmove', e => {
-    clearTimeout(pillLPTimer);
     const dx = e.touches[0].clientX - startX;
     if (Math.abs(dx) > 8) {
       hasSwiped = true;
-      const shift = Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, 22);
-      pill.style.transform = `translateX(${shift}px) scale(0.95)`;
+      const shift = Math.sign(dx) * Math.min(Math.abs(dx) * 0.45, 28);
+      pill.style.transform = `translateX(${shift}px) scaleX(${1 + Math.abs(dx)*0.003}) scaleY(${1 - Math.abs(dx)*0.002})`;
     }
   }, {passive: true});
 
   pill.addEventListener('touchend', e => {
-    clearTimeout(pillLPTimer);
     lastTouchTime = Date.now();
     pill.style.transition = '';
     pill.style.transform = '';
-    if (pillLongPressed) { pillLongPressed = false; return; }
     const dx = e.changedTouches[0].clientX - startX;
-    if (!hasSwiped || Math.abs(dx) < 10) {
-      pillAnimate('left', goToToday);
+    if (!hasSwiped || Math.abs(dx) < SWIPE_THRESHOLD) {
+      // tap → open profile
+      loadProfile(); openModal('profile-modal');
     } else if (dx < 0) {
       pillAnimate('left', goToToday);
     } else {
@@ -2746,15 +2739,10 @@ function goToToday() {
   }, {passive: true});
 
   // Mouse handlers (desktop)
-  let mStartX = 0, mDragging = false, mLPTimer = null, mLongPressed = false;
+  let mStartX = 0, mDragging = false;
   pill.addEventListener('mousedown', e => {
-    mStartX = e.clientX; mDragging = false; mLongPressed = false;
+    mStartX = e.clientX; mDragging = false;
     pill.style.transition = 'none';
-    mLPTimer = setTimeout(() => {
-      mLongPressed = true;
-      loadProfile();
-      openModal('profile-modal');
-    }, 500);
     e.preventDefault();
   });
   window.addEventListener('mousemove', e => {
@@ -2762,20 +2750,17 @@ function goToToday() {
     const dx = e.clientX - mStartX;
     if (Math.abs(dx) > 8) {
       mDragging = true;
-      clearTimeout(mLPTimer);
-      const shift = Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, 22);
-      pill.style.transform = `translateX(${shift}px) scale(0.95)`;
+      const shift = Math.sign(dx) * Math.min(Math.abs(dx) * 0.45, 28);
+      pill.style.transform = `translateX(${shift}px) scaleX(${1 + Math.abs(dx)*0.003}) scaleY(${1 - Math.abs(dx)*0.002})`;
     }
   });
   window.addEventListener('mouseup', e => {
     if (!mStartX) return;
-    clearTimeout(mLPTimer);
     pill.style.transition = '';
     pill.style.transform = '';
-    if (mLongPressed) { mLongPressed = false; mStartX = 0; mDragging = false; return; }
     const dx = e.clientX - mStartX;
-    if (!mDragging || Math.abs(dx) < 10) {
-      pillAnimate('left', goToToday);
+    if (!mDragging || Math.abs(dx) < SWIPE_THRESHOLD) {
+      loadProfile(); openModal('profile-modal');
     } else if (dx < 0) {
       pillAnimate('left', goToToday);
     } else {
@@ -2785,8 +2770,8 @@ function goToToday() {
   });
 
   pill.addEventListener('click', e => {
-    if (Date.now() - lastTouchTime < 400) return;
-    pillAnimate('left', goToToday);
+    if (Date.now() - lastTouchTime < 400) return; // dedup after touchend
+    loadProfile(); openModal('profile-modal');
   });
 })();
 
@@ -3152,9 +3137,6 @@ function openProfileModal() {
   // Mark active bg swatch
   syncBgSwatches(_pendBg);
 
-  // Load custom slots
-  loadCustomSlots();
-
   document.getElementById('profile-title').textContent = lang === 'zh' ? '个人主页' : 'Profile';
   openModal('profile-modal');
 }
@@ -3203,9 +3185,6 @@ function syncThemeSwatches(color) {
   document.querySelectorAll('#theme-color-swatches .theme-swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.color === color);
   });
-  document.querySelectorAll('#theme-color-swatches .custom-slot').forEach(s => {
-    s.classList.toggle('active', s.dataset.color === color && s.classList.contains('filled'));
-  });
 }
 
 function setPillColorPreview(el) {
@@ -3238,61 +3217,6 @@ function syncBgSwatches(color) {
   document.querySelectorAll('#bg-color-swatches .bg-swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.bg === color);
   });
-}
-
-// ---- Custom color slots ----
-function loadCustomSlots() {
-  for (let i = 0; i < 2; i++) {
-    const tc = localStorage.getItem(`profile_theme_custom_${i}`) || '';
-    updateCustomSlotUI('theme', i, tc);
-  }
-  // Bind long-press to clear theme slots
-  for (let i = 0; i < 2; i++) {
-    const ts = document.getElementById(`theme-custom-${i}`);
-    if (ts) bindLongPress(ts, () => {
-      if (!ts.classList.contains('filled')) return;
-      localStorage.removeItem(`profile_theme_custom_${i}`);
-      updateCustomSlotUI('theme', i, '');
-      showToast('已清除');
-    });
-  }
-}
-
-function updateCustomSlotUI(type, slot, color) {
-  const el = document.getElementById(`${type}-custom-${slot}`);
-  if (!el) return;
-  if (color) {
-    el.dataset.color = color;
-    el.classList.add('filled');
-    el.style.background = color;
-    el.textContent = '';
-    el.title = '点击应用 · 长按清除';
-    el.onclick = type === 'pill'
-      ? () => setPillColorPreview(el)
-      : () => setThemeColorPreview(color, el);
-  } else {
-    el.dataset.color = '';
-    el.classList.remove('filled');
-    el.classList.remove('active');
-    el.style.background = '';
-    el.textContent = '+';
-    el.title = '点击保存当前颜色';
-    el.onclick = type === 'pill'
-      ? () => saveCustomPillSlot(slot)
-      : () => saveCustomThemeSlot(slot);
-  }
-}
-
-function saveCustomPillSlot(slot) {
-  const color = _pendPill || localStorage.getItem('profile_pill') || 'rgba(139,111,94,0.18)';
-  localStorage.setItem(`profile_pill_custom_${slot}`, color);
-  updateCustomSlotUI('pill', slot, color);
-}
-
-function saveCustomThemeSlot(slot) {
-  const color = _pendTheme || localStorage.getItem('profile_theme') || '#8B6F5E';
-  localStorage.setItem(`profile_theme_custom_${slot}`, color);
-  updateCustomSlotUI('theme', slot, color);
 }
 
 // ---- Avatar / Pill image ----
