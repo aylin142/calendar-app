@@ -1047,10 +1047,25 @@
       <div style="margin-top:8px;font-size:12px;color:var(--text-muted)" id="mode-tip"></div>
       <div style="margin-top:20px;"></div>
       <div class="settings-section-label" id="settings-ai-label">AI功能设置</div>
+      <div class="seg-control" id="ai-provider-seg" style="margin-bottom:12px;">
+        <button class="seg-btn" data-val="deepseek">DeepSeek</button>
+        <button class="seg-btn" data-val="siliconflow">硅基流动</button>
+        <button class="seg-btn" data-val="custom" id="ai-custom-btn-seg">自定义</button>
+      </div>
       <div class="field-group" style="margin-bottom:4px;">
-        <div class="field-label" id="settings-lbl-apikey">DeepSeek API Key</div>
+        <div class="field-label" id="settings-lbl-apikey">API Key</div>
         <input class="field-input" id="settings-apikey" type="password" placeholder="sk-..." autocomplete="off" />
         <div style="font-size:11px;color:var(--text-light);margin-top:4px;" id="settings-key-note">Key 仅存储在本地，不会上传</div>
+      </div>
+      <div id="settings-custom-fields" style="display:none;">
+        <div class="field-group" style="margin-bottom:4px;">
+          <div class="field-label">API 地址</div>
+          <input class="field-input" id="settings-custom-url" type="text" placeholder="https://api.example.com/v1/chat/completions" autocomplete="off" />
+        </div>
+        <div class="field-group" style="margin-bottom:4px;">
+          <div class="field-label">模型名称</div>
+          <input class="field-input" id="settings-custom-model" type="text" placeholder="gpt-4o-mini" autocomplete="off" />
+        </div>
       </div>
       <div style="margin-top:20px;"></div>
       <div class="settings-section-label" id="settings-lang-label">语言 / Language</div>
@@ -1171,6 +1186,14 @@ let isPinching = false;
 // Input mode: 'inline' | 'popup'
 let inputMode = localStorage.getItem('planner_input_mode') || 'inline';
 let currentCategory = 'work';
+
+// AI providers
+const AI_PROVIDERS = {
+  deepseek:    { name: 'DeepSeek',   url: 'https://api.deepseek.com/v1/chat/completions',       model: 'deepseek-chat',                 key: 'planner_ai_key' },
+  siliconflow: { name: '硅基流动',   url: 'https://api.siliconflow.cn/v1/chat/completions',      model: 'Qwen/Qwen2.5-7B-Instruct',      key: 'planner_ai_key_sf' },
+  custom:      { name: '自定义',     url: '',                                                     model: '',                              key: 'planner_ai_key_custom' },
+};
+let aiProvider = localStorage.getItem('planner_ai_provider') || 'deepseek';
 
 // Highlighted dates in calendar (long-press to mark)
 const highlightedDates = new Set();
@@ -2419,7 +2442,8 @@ function confirmMonthWheel() {
 
 // ==================== AI SUMMARY ====================
 function openAIModal() {
-  const hasKey = !!(localStorage.getItem('planner_ai_key') || '').trim();
+  const prov = AI_PROVIDERS[aiProvider] || AI_PROVIDERS.deepseek;
+  const hasKey = !!(localStorage.getItem(prov.key) || '').trim();
   if (!hasKey) {
     showToast(t('noApiKeySettings'));
     return;
@@ -2455,8 +2479,12 @@ function openAIModal() {
 }
 
 async function runAISummary() {
-  const apiKey = (localStorage.getItem('planner_ai_key') || '').trim();
+  const prov = AI_PROVIDERS[aiProvider] || AI_PROVIDERS.deepseek;
+  const apiKey = (localStorage.getItem(prov.key) || '').trim();
   if (!apiKey) { showToast(t('noApiKeySettings')); return; }
+  const apiUrl   = aiProvider === 'custom' ? (localStorage.getItem('planner_ai_custom_url') || '').trim()   : prov.url;
+  const apiModel = aiProvider === 'custom' ? (localStorage.getItem('planner_ai_custom_model') || '').trim() : prov.model;
+  if (!apiUrl || !apiModel) { showToast(lang==='zh'?'请填写自定义API地址和模型名称':'Enter custom API URL and model'); return; }
 
   const rangeVal = document.querySelector('#ai-range-seg .seg-btn.active').dataset.val;
   const catVal = document.querySelector('#ai-cat-seg .seg-btn.active').dataset.val;
@@ -2506,11 +2534,11 @@ async function runAISummary() {
     : `Please summarize the following schedule from ${fromStr} to ${toStr}, focusing on ${catMap[catVal]}. Generate a natural language summary including: completion status, important events, and pending items. Be concise and friendly.\n\nSchedule:\n${itemsText}`;
 
   try {
-    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const resp = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: apiModel,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 1000, temperature: 0.7
       })
@@ -2540,8 +2568,16 @@ document.getElementById('settings-btn').addEventListener('click', () => {
   document.getElementById('settings-ai-label').textContent = t('settingsAiLabel');
   document.getElementById('settings-lbl-apikey').textContent = t('apiKey');
   document.getElementById('settings-key-note').textContent = t('apiKeyNote');
-  // Populate saved key
-  document.getElementById('settings-apikey').value = localStorage.getItem('planner_ai_key') || '';
+  // Populate provider seg + key
+  setSegActive('ai-provider-seg', aiProvider);
+  const prov = AI_PROVIDERS[aiProvider] || AI_PROVIDERS.deepseek;
+  document.getElementById('settings-apikey').value = localStorage.getItem(prov.key) || '';
+  const isCustom = aiProvider === 'custom';
+  document.getElementById('settings-custom-fields').style.display = isCustom ? '' : 'none';
+  if (isCustom) {
+    document.getElementById('settings-custom-url').value   = localStorage.getItem('planner_ai_custom_url')   || '';
+    document.getElementById('settings-custom-model').value = localStorage.getItem('planner_ai_custom_model') || '';
+  }
   setSegActive('input-mode-seg', inputMode);
   updateModeTip();
   // Sync lang buttons
@@ -2568,15 +2604,41 @@ document.getElementById('input-mode-seg').addEventListener('click', e => {
   updateModeTip();
 });
 
+document.getElementById('ai-provider-seg').addEventListener('click', e => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  // Save current key before switching
+  const curProv = AI_PROVIDERS[document.querySelector('#ai-provider-seg .seg-btn.active')?.dataset.val] || AI_PROVIDERS.deepseek;
+  const curKey = document.getElementById('settings-apikey').value.trim();
+  if (curKey) localStorage.setItem(curProv.key, curKey);
+  setSegActive('ai-provider-seg', btn.dataset.val);
+  const newProv = AI_PROVIDERS[btn.dataset.val] || AI_PROVIDERS.deepseek;
+  document.getElementById('settings-apikey').value = localStorage.getItem(newProv.key) || '';
+  const isCustom = btn.dataset.val === 'custom';
+  document.getElementById('settings-custom-fields').style.display = isCustom ? '' : 'none';
+  if (isCustom) {
+    document.getElementById('settings-custom-url').value   = localStorage.getItem('planner_ai_custom_url')   || '';
+    document.getElementById('settings-custom-model').value = localStorage.getItem('planner_ai_custom_model') || '';
+  }
+});
+
 function saveSettings() {
   const val = document.querySelector('#input-mode-seg .seg-btn.active')?.dataset.val || inputMode;
   inputMode = val;
   localStorage.setItem('planner_input_mode', inputMode);
+  // Save provider choice + key for current provider
+  const provVal = document.querySelector('#ai-provider-seg .seg-btn.active')?.dataset.val || aiProvider;
+  aiProvider = provVal;
+  localStorage.setItem('planner_ai_provider', aiProvider);
+  const prov = AI_PROVIDERS[aiProvider] || AI_PROVIDERS.deepseek;
   const keyVal = document.getElementById('settings-apikey').value.trim();
-  if (keyVal) {
-    localStorage.setItem('planner_ai_key', keyVal);
-  } else {
-    localStorage.removeItem('planner_ai_key');
+  if (keyVal) localStorage.setItem(prov.key, keyVal);
+  else        localStorage.removeItem(prov.key);
+  if (aiProvider === 'custom') {
+    const urlVal   = document.getElementById('settings-custom-url').value.trim();
+    const modelVal = document.getElementById('settings-custom-model').value.trim();
+    if (urlVal)   localStorage.setItem('planner_ai_custom_url', urlVal);
+    if (modelVal) localStorage.setItem('planner_ai_custom_model', modelVal);
   }
   const langVal = document.querySelector('#lang-seg .lang-seg-btn.active')?.dataset.val || lang;
   if (langVal !== lang) {
