@@ -118,7 +118,7 @@
   }
 
   .row-content {
-    flex: 1; padding: 8px 8px 8px 0;
+    flex: 1; padding: 8px 8px 8px 12px;
     display: flex; flex-direction: column; justify-content: center;
   }
 
@@ -552,9 +552,13 @@
   .cat-tag {
     font-size: 10px; color: var(--text-light); background: var(--cream);
     border-radius: 8px; padding: 1px 6px;
+    cursor: pointer; user-select: none;
+    transition: opacity var(--transition);
   }
+  .cat-tag:active { opacity: 0.65; }
   .cat-tag.work { color: #8B6F5E; background: rgba(196,168,130,0.2); }
   .cat-tag.life { color: #5A8A5A; background: rgba(127,185,127,0.15); }
+  .cat-tag.study { color: #5B7FA6; background: rgba(91,127,166,0.15); }
 </style>
 </head>
 <body>
@@ -644,6 +648,7 @@
         <div class="seg-control" id="category-seg">
           <button class="seg-btn active" data-val="work" id="cat-work-btn">工作</button>
           <button class="seg-btn" data-val="life" id="cat-life-btn">生活</button>
+          <button class="seg-btn" data-val="study" id="cat-study-btn">学习</button>
           <button class="seg-btn" data-val="" id="cat-none-btn">无</button>
         </div>
       </div>
@@ -927,6 +932,7 @@ const T = {
     category: '分类',
     catWork: '工作',
     catLife: '生活',
+    catStudy: '学习',
     catNone: '无',
     settingsSaved: '设置已保存',
     settingsAiLabel: 'AI功能设置',
@@ -1007,6 +1013,7 @@ const T = {
     category: 'Category',
     catWork: 'Work',
     catLife: 'Life',
+    catStudy: 'Study',
     catNone: 'None',
     settingsSaved: 'Settings saved',
     settingsAiLabel: 'AI Settings',
@@ -1131,42 +1138,25 @@ function processOverdueItems() {
 // ==================== RENDER PAGE ====================
 function renderPage(container, dateStr) {
   const items = getItemsForDate(dateStr);
-  const d = strToDate(dateStr);
-  const now = new Date();
-  const isToday = dateStr === todayStr();
-  const isPast = d < new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // Build 24-slot rows (00:00 ~ 23:00) + extra empty rows
-  const ROWS = 24;
-  let html = '';
-
-  // Timed items
+  // Timed items first (sorted by time), then untimed
   const timedItems = items.filter(i => i.time).sort((a,b) => a.time.localeCompare(b.time));
   const untimedItems = items.filter(i => !i.time);
+  const sortedItems = [...timedItems, ...untimedItems];
 
-  // All-day section
-  html += `<div class="section-date-header" id="section-allday-${dateStr}">${lang==='zh'?'全天':'All Day'}</div>`;
-  untimedItems.forEach(item => {
+  let html = '';
+
+  sortedItems.forEach(item => {
     html += renderItemRow(item, dateStr);
+    // Blank input row after every item
+    html += renderEmptyRow(dateStr, null, 'after-' + item.id);
   });
-  // Empty rows for all-day
-  for (let i = 0; i < Math.max(3, 5 - untimedItems.length); i++) {
-    html += renderEmptyRow(dateStr, null, i);
+
+  // Always keep extra blank rows at the end
+  const extraRows = Math.max(5, 8 - sortedItems.length);
+  for (let i = 0; i < extraRows; i++) {
+    html += renderEmptyRow(dateStr, null, 'end-' + i);
   }
-
-  // Timed section
-  html += `<div class="section-date-header" id="section-timed-${dateStr}">${lang==='zh'?'定时':'Timed'}</div>`;
-  const shownHours = new Set();
-  timedItems.forEach(item => {
-    shownHours.add(item.time.slice(0,2));
-    html += renderItemRow(item, dateStr);
-  });
-  // Show empty rows for common hours
-  ['08','09','10','11','12','14','15','16','17','18','20'].forEach(h => {
-    if (!shownHours.has(h)) {
-      html += renderEmptyRow(dateStr, h+':00', 'h'+h);
-    }
-  });
 
   container.innerHTML = html;
   container.dataset.date = dateStr;
@@ -1198,8 +1188,9 @@ function renderItemRow(item, dateStr) {
   }
   const repeatLabel = item.repeat && item.repeat !== 'none' ?
     `<span class="repeat-tag">${{daily:lang==='zh'?'每天':'Daily',weekly:lang==='zh'?'每周':'Weekly',monthly:lang==='zh'?'每月':'Monthly'}[item.repeat]||''}</span>` : '';
-  const catLabel = item.category && item.category !== '' ?
-    `<span class="cat-tag ${item.category}">${item.category==='work'?(lang==='zh'?'工作':'Work'):(lang==='zh'?'生活':'Life')}</span>` : '';
+  const effectiveCat = (item.category && item.category !== '') ? item.category : 'work';
+  const catNames = {work: lang==='zh'?'工作':'Work', life: lang==='zh'?'生活':'Life', study: lang==='zh'?'学习':'Study'};
+  const catLabel = `<span class="cat-tag ${effectiveCat}" onclick="cycleCatTag(event,'${item.id}','${dateStr}')">${catNames[effectiveCat]||'工作'}</span>`;
   const noteHtml = item.note ? `<div class="item-note">${escHtml(item.note)}</div>` : '';
 
   let leftHandle;
@@ -1375,11 +1366,26 @@ bindLongPress(document.getElementById('date-display'), () => {
   });
 });
 
+// ==================== CATEGORY CYCLE ====================
+function cycleCatTag(event, id, dateStr) {
+  event.stopPropagation();
+  const items = getItemsForDate(dateStr);
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const cycle = ['work', 'life', 'study'];
+  const cur = (item.category && item.category !== '') ? item.category : 'work';
+  const idx = cycle.indexOf(cur);
+  item.category = cycle[(idx + 1) % cycle.length];
+  setItemsForDate(dateStr, items);
+  renderAll();
+}
+
 // ==================== ROW CLICKS ====================
 function handleRowClick(event, id, dateStr) {
-  // Don't open if clicking check button
+  // Don't open if clicking check button, left handle, or category tag
   if (event.target.closest('.check-btn')) return;
   if (event.target.closest('.row-left-handle')) return;
+  if (event.target.closest('.cat-tag')) return;
   openItemModal(id, dateStr);
 }
 
@@ -1521,6 +1527,7 @@ function openItemModal(id, dateStr, prefillTime) {
   document.getElementById('lbl-category').textContent = t('category');
   document.getElementById('cat-work-btn').textContent = t('catWork');
   document.getElementById('cat-life-btn').textContent = t('catLife');
+  document.getElementById('cat-study-btn').textContent = t('catStudy');
   document.getElementById('cat-none-btn').textContent = t('catNone');
 
   if (isNew) {
