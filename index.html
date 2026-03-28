@@ -190,8 +190,8 @@
   }
 
   #nav-pill {
-    min-width: 60px; height: 32px; border-radius: 16px;
-    padding: 0 16px;
+    width: 120px; height: 44px; border-radius: 22px;
+    padding: 0;
     background: var(--pill-bg);
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--pill-border);
@@ -203,11 +203,6 @@
     -webkit-tap-highlight-color: transparent;
   }
   #nav-pill:active { transform: scale(0.88); opacity: 0.7; }
-  #nav-pill-date {
-    font-size: 16px; font-weight: 300; letter-spacing: -0.5px;
-    color: rgba(61,43,31,0.72); font-variant-numeric: tabular-nums;
-    pointer-events: none;
-  }
   @keyframes pillGoLeft {
     0%   { transform: translateX(0) scale(1); }
     35%  { transform: translateX(-14px) scale(0.90); }
@@ -833,9 +828,7 @@
 
 <!-- BOTTOM BAR -->
 <div id="bottom-bar">
-  <div id="nav-pill">
-    <span id="nav-pill-date"></span>
-  </div>
+  <div id="nav-pill"></div>
 </div>
 
 <!-- TOAST -->
@@ -1103,10 +1096,6 @@
         <div class="theme-swatch" data-color="rgba(91,127,166,0.88)" style="background:#5B7FA6;" onclick="setPillColorPreview(this)"></div>
         <div class="theme-swatch" data-color="rgba(60,60,60,0.78)" style="background:#3C3C3C;" onclick="setPillColorPreview(this)"></div>
         <div class="theme-swatch" data-color="rgba(180,100,110,0.78)" style="background:#B4646E;" onclick="setPillColorPreview(this)"></div>
-        <div class="theme-swatch" data-color="rgba(200,160,80,0.82)" style="background:#C8A050;" onclick="setPillColorPreview(this)"></div>
-        <div class="theme-swatch" data-color="rgba(80,130,160,0.82)" style="background:#5082A0;" onclick="setPillColorPreview(this)"></div>
-        <div class="custom-slot" id="pill-custom-0" title="点击保存当前颜色">+</div>
-        <div class="custom-slot" id="pill-custom-1" title="点击保存当前颜色">+</div>
       </div>
       <label id="profile-img-label">
         📷 从相册选择图片作为胶囊背景
@@ -1624,7 +1613,6 @@ function updateHeader() {
   document.getElementById('date-main-text').textContent = info.main;
   document.getElementById('date-sub-text').textContent = info.sub;
   updateCalIcon();
-  updateNavPill();
 }
 
 function updateCalIcon() {
@@ -1636,10 +1624,6 @@ function updateCalIcon() {
   monthEl.textContent = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][now.getMonth()];
 }
 
-function updateNavPill() {
-  const el = document.getElementById('nav-pill-date');
-  if (el) el.textContent = new Date().getDate();
-}
 
 // ==================== SWIPE ====================
 const swipeContainer = document.getElementById('swipe-container');
@@ -3190,21 +3174,12 @@ function syncBgSwatches(color) {
 // ---- Custom color slots ----
 function loadCustomSlots() {
   for (let i = 0; i < 2; i++) {
-    const pc = localStorage.getItem(`profile_pill_custom_${i}`) || '';
-    updateCustomSlotUI('pill', i, pc);
     const tc = localStorage.getItem(`profile_theme_custom_${i}`) || '';
     updateCustomSlotUI('theme', i, tc);
   }
-  // Bind long-press to clear
+  // Bind long-press to clear theme slots
   for (let i = 0; i < 2; i++) {
-    const ps = document.getElementById(`pill-custom-${i}`);
     const ts = document.getElementById(`theme-custom-${i}`);
-    if (ps) bindLongPress(ps, () => {
-      if (!ps.classList.contains('filled')) return;
-      localStorage.removeItem(`profile_pill_custom_${i}`);
-      updateCustomSlotUI('pill', i, '');
-      showToast('已清除');
-    });
     if (ts) bindLongPress(ts, () => {
       if (!ts.classList.contains('filled')) return;
       localStorage.removeItem(`profile_theme_custom_${i}`);
