@@ -86,6 +86,7 @@
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     will-change: transform;
+    overscroll-behavior: none;
   }
 
   /* ===== NOTEBOOK LINES ===== */
@@ -606,10 +607,13 @@
     cursor: crosshair;
   }
   #canvas-toolbar {
-    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
-    padding: 8px 16px 6px;
+    flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+    padding: 8px 16px 8px;
     border-top: 1px solid var(--line);
     background: var(--warm-white);
+  }
+  .canvas-tb-row {
+    display: flex; align-items: center; gap: 8px;
   }
   .canvas-color-swatch {
     width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
@@ -626,6 +630,26 @@
     border: 1px solid var(--line); background: var(--cream);
     color: var(--text-muted); cursor: pointer; flex-shrink: 0;
   }
+  .canvas-icon-btn {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--cream);
+    font-size: 16px; cursor: pointer; display: inline-flex;
+    align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background var(--transition), border-color var(--transition);
+    padding: 0; line-height: 1;
+  }
+  .canvas-icon-btn.active { background: var(--brown); color: white; border-color: var(--brown); }
+  .canvas-icon-btn:disabled { opacity: 0.3; cursor: default; }
+  #eraser-size-popup {
+    position: fixed; z-index: 300;
+    background: var(--warm-white); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 16px; box-shadow: 0 4px 20px var(--shadow);
+    display: none; align-items: center; gap: 10px;
+    bottom: 90px; right: 16px;
+  }
+  #eraser-size-popup.visible { display: flex; }
+  #eraser-size-range { width: 120px; accent-color: var(--brown); }
+  #eraser-size-val { font-size: 12px; color: var(--text-muted); min-width: 32px; }
   /* Fullscreen canvas */
   body.canvas-fullscreen #app-header,
   body.canvas-fullscreen #bottom-bar,
@@ -725,14 +749,28 @@
 <div id="canvas-view">
   <canvas id="drawing-canvas"></canvas>
   <div id="canvas-toolbar">
-    <div class="canvas-color-swatch active" data-color="#3D2B1F" style="background:#3D2B1F;" onclick="setCanvasColor('#3D2B1F',this)"></div>
-    <div class="canvas-color-swatch" data-color="#C0392B" style="background:#C0392B;" onclick="setCanvasColor('#C0392B',this)"></div>
-    <div class="canvas-color-swatch" data-color="#5A8A5A" style="background:#5A8A5A;" onclick="setCanvasColor('#5A8A5A',this)"></div>
-    <div class="canvas-color-swatch" data-color="#5B7FA6" style="background:#5B7FA6;" onclick="setCanvasColor('#5B7FA6',this)"></div>
-    <div class="canvas-color-swatch" data-color="#A08878" style="background:#A08878;" onclick="setCanvasColor('#A08878',this)"></div>
-    <input type="range" id="canvas-stroke-range" min="1" max="20" value="3" oninput="currentStroke=+this.value">
-    <button id="canvas-clear-btn" onclick="clearCanvas()">清除</button>
+    <div class="canvas-tb-row">
+      <div class="canvas-color-swatch active" data-color="#3D2B1F" style="background:#3D2B1F;" onclick="setCanvasColor('#3D2B1F',this)"></div>
+      <div class="canvas-color-swatch" data-color="#C0392B" style="background:#C0392B;" onclick="setCanvasColor('#C0392B',this)"></div>
+      <div class="canvas-color-swatch" data-color="#5A8A5A" style="background:#5A8A5A;" onclick="setCanvasColor('#5A8A5A',this)"></div>
+      <div class="canvas-color-swatch" data-color="#5B7FA6" style="background:#5B7FA6;" onclick="setCanvasColor('#5B7FA6',this)"></div>
+      <div class="canvas-color-swatch" data-color="#A08878" style="background:#A08878;" onclick="setCanvasColor('#A08878',this)"></div>
+      <div style="flex:1"></div>
+      <button id="canvas-eraser-btn" class="canvas-icon-btn" title="橡皮擦" onclick="toggleEraser()">⬜</button>
+      <button id="canvas-undo-btn" class="canvas-icon-btn" onclick="canvasUndo()" title="撤销" disabled>↩</button>
+      <button id="canvas-redo-btn" class="canvas-icon-btn" onclick="canvasRedo()" title="恢复" disabled>↪</button>
+    </div>
+    <div class="canvas-tb-row">
+      <input type="range" id="canvas-stroke-range" min="1" max="20" value="3" oninput="currentStroke=+this.value">
+      <button id="canvas-clear-btn" onclick="clearCanvas()">清除</button>
+    </div>
   </div>
+</div>
+<div id="eraser-size-popup">
+  <span style="font-size:12px;color:var(--text-muted)">橡皮大小</span>
+  <input type="range" id="eraser-size-range" min="10" max="80" value="20"
+    oninput="currentEraserSize=+this.value;document.getElementById('eraser-size-val').textContent=currentEraserSize+'px'">
+  <span id="eraser-size-val">20px</span>
 </div>
 <button id="canvas-fullscreen-back" onclick="exitCanvasFullscreen()">←</button>
 
@@ -1080,6 +1118,21 @@ let canvasPinchActive = false;
 let canvasPinchStartDist = 0, canvasPinchStartZoom = 1;
 let canvasPinchMidX = 0, canvasPinchMidY = 0;
 let canvasZoom = 1, canvasOffX = 0, canvasOffY = 0;
+let currentTool = 'pen'; // 'pen' | 'eraser'
+let currentEraserSize = 20;
+const canvasUndoStacks = {};
+const canvasRedoStacks = {};
+const MAX_UNDO = 50;
+
+// ==================== PAGE ROW STATE ====================
+let pageRowCount = 14; // computed from screen height, set in init
+const dateRowCounts = {}; // per-date row count, only grows
+
+function computePageRowCount() {
+  const el = document.getElementById('swipe-container');
+  const h = el.offsetHeight || (window.innerHeight - 130);
+  pageRowCount = Math.ceil(h / 48) + 1;
+}
 
 // ==================== I18N ====================
 const T = {
@@ -1370,17 +1423,24 @@ function renderPage(container, dateStr) {
   const untimedItems = items.filter(i => !i.time);
   const sortedItems = [...timedItems, ...untimedItems];
 
+  // Fixed row count per date — only grows, never shrinks
+  if (!dateRowCounts[dateStr]) {
+    dateRowCounts[dateStr] = pageRowCount || 14;
+  }
+  // Ensure at least 1 blank row remains at the bottom
+  while (dateRowCounts[dateStr] <= sortedItems.length) {
+    dateRowCounts[dateStr]++;
+  }
+  const totalRows = dateRowCounts[dateStr];
+  const blankRows = totalRows - sortedItems.length;
+
   let html = '';
 
   sortedItems.forEach(item => {
     html += renderItemRow(item, dateStr);
   });
 
-  // Dynamically fill remaining screen with blank rows
-  const contH = document.getElementById('swipe-container').offsetHeight || (window.innerHeight - 130);
-  const visibleRows = Math.ceil(contH / 48) + 2;
-  const extraRows = Math.max(4, visibleRows - sortedItems.length);
-  for (let i = 0; i < extraRows; i++) {
+  for (let i = 0; i < blankRows; i++) {
     html += renderEmptyRow(dateStr, null, 'end-' + i);
   }
 
@@ -2542,9 +2602,9 @@ function goToToday() {
     const dx = e.changedTouches[0].clientX - startX;
     if (!hasSwiped || Math.abs(dx) < 10) {
       goToToday();
-    } else if (dx < -40) {
+    } else if (dx < 0) {
       goToToday();
-    } else if (dx > 40) {
+    } else {
       openAIModal();
     }
     hasSwiped = false;
@@ -2581,9 +2641,9 @@ function goToToday() {
     const dx = e.clientX - mStartX;
     if (!mDragging || Math.abs(dx) < 10) {
       goToToday();
-    } else if (dx < -40) {
+    } else if (dx < 0) {
       goToToday();
-    } else if (dx > 40) {
+    } else {
       openAIModal();
     }
     mStartX = 0; mDragging = false;
@@ -2602,7 +2662,13 @@ function initCanvas(dateStr) {
   canvas.width = canvas.offsetWidth || window.innerWidth;
   canvas.height = canvas.offsetHeight || (window.innerHeight - 120);
   canvasZoom = 1; canvasOffX = 0; canvasOffY = 0;
+  canvas.style.transform = '';
+  currentTool = 'pen';
+  document.getElementById('canvas-eraser-btn').classList.remove('active');
+  canvasUndoStacks[dateStr] = canvasUndoStacks[dateStr] || [];
+  canvasRedoStacks[dateStr] = canvasRedoStacks[dateStr] || [];
   loadCanvasData(dateStr);
+  updateUndoRedoBtns();
 }
 
 function saveCanvasData(dateStr) {
@@ -2623,11 +2689,53 @@ function loadCanvasData(dateStr) {
 
 function setCanvasColor(color, el) {
   currentColor = color;
+  // Switch to pen if in eraser mode
+  if (currentTool === 'eraser') {
+    currentTool = 'pen';
+    document.getElementById('canvas-eraser-btn').classList.remove('active');
+  }
   document.querySelectorAll('.canvas-color-swatch').forEach(s => s.classList.remove('active'));
   if (el) el.classList.add('active');
 }
 
+function toggleEraser() {
+  if (currentTool === 'eraser') {
+    currentTool = 'pen';
+    document.getElementById('canvas-eraser-btn').classList.remove('active');
+  } else {
+    currentTool = 'eraser';
+    document.getElementById('canvas-eraser-btn').classList.add('active');
+    document.querySelectorAll('.canvas-color-swatch').forEach(s => s.classList.remove('active'));
+  }
+  closeEraserPopup();
+}
+
+function closeEraserPopup() {
+  document.getElementById('eraser-size-popup').classList.remove('visible');
+}
+
+// Long-press eraser button → show size popup
+(function() {
+  const btn = document.getElementById('canvas-eraser-btn');
+  let lpTimer = null, lpFired = false;
+  function startLP() { lpFired = false; lpTimer = setTimeout(() => { lpFired = true; document.getElementById('eraser-size-popup').classList.toggle('visible'); }, 500); }
+  function cancelLP() { clearTimeout(lpTimer); }
+  btn.addEventListener('touchstart', startLP, {passive: true});
+  btn.addEventListener('touchmove', cancelLP, {passive: true});
+  btn.addEventListener('touchend', () => { cancelLP(); }, {passive: true});
+  btn.addEventListener('mousedown', startLP);
+  btn.addEventListener('mousemove', cancelLP);
+  btn.addEventListener('mouseup', cancelLP);
+  // Close popup when tapping elsewhere
+  document.addEventListener('touchstart', e => {
+    if (!e.target.closest('#eraser-size-popup') && !e.target.closest('#canvas-eraser-btn')) {
+      closeEraserPopup();
+    }
+  }, {passive: true});
+})();
+
 function clearCanvas() {
+  canvasPushUndo();
   const canvas = document.getElementById('drawing-canvas');
   canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
   if (canvasCurrentDate) saveCanvasData(canvasCurrentDate);
@@ -2635,6 +2743,65 @@ function clearCanvas() {
 
 function exitCanvasFullscreen() {
   document.body.classList.remove('canvas-fullscreen');
+}
+
+// ---- Undo / Redo ----
+function canvasPushUndo() {
+  const ds = canvasCurrentDate;
+  if (!ds) return;
+  canvasUndoStacks[ds] = canvasUndoStacks[ds] || [];
+  canvasRedoStacks[ds] = canvasRedoStacks[ds] || [];
+  const canvas = document.getElementById('drawing-canvas');
+  canvasUndoStacks[ds].push(canvas.toDataURL());
+  if (canvasUndoStacks[ds].length > MAX_UNDO) canvasUndoStacks[ds].shift();
+  canvasRedoStacks[ds] = []; // new action clears redo
+  updateUndoRedoBtns();
+}
+
+function canvasUndo() {
+  const ds = canvasCurrentDate;
+  if (!ds || !canvasUndoStacks[ds]?.length) return;
+  canvasRedoStacks[ds] = canvasRedoStacks[ds] || [];
+  const canvas = document.getElementById('drawing-canvas');
+  canvasRedoStacks[ds].push(canvas.toDataURL());
+  const prev = canvasUndoStacks[ds].pop();
+  restoreCanvasSnapshot(prev);
+}
+
+function canvasRedo() {
+  const ds = canvasCurrentDate;
+  if (!ds || !canvasRedoStacks[ds]?.length) return;
+  canvasUndoStacks[ds] = canvasUndoStacks[ds] || [];
+  const canvas = document.getElementById('drawing-canvas');
+  canvasUndoStacks[ds].push(canvas.toDataURL());
+  const next = canvasRedoStacks[ds].pop();
+  restoreCanvasSnapshot(next);
+}
+
+function restoreCanvasSnapshot(dataUrl) {
+  const canvas = document.getElementById('drawing-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (dataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0);
+      if (canvasCurrentDate) saveCanvasData(canvasCurrentDate);
+      updateUndoRedoBtns();
+    };
+    img.src = dataUrl;
+  } else {
+    if (canvasCurrentDate) saveCanvasData(canvasCurrentDate);
+    updateUndoRedoBtns();
+  }
+}
+
+function updateUndoRedoBtns() {
+  const ds = canvasCurrentDate;
+  const undoBtn = document.getElementById('canvas-undo-btn');
+  const redoBtn = document.getElementById('canvas-redo-btn');
+  if (undoBtn) undoBtn.disabled = !(ds && canvasUndoStacks[ds]?.length);
+  if (redoBtn) redoBtn.disabled = !(ds && canvasRedoStacks[ds]?.length);
 }
 
 function getPinchDistTouches(t1, t2) {
@@ -2651,12 +2818,21 @@ function getPinchDistTouches(t1, t2) {
     return { x: src.clientX - rect.left, y: src.clientY - rect.top };
   }
 
-  function drawLine(x1, y1, x2, y2) {
+  function applyStroke(x1, y1, x2, y2) {
     const ctx = canvas.getContext('2d');
-    ctx.strokeStyle = currentColor;
-    ctx.lineWidth = Math.max(1, currentStroke);
+    ctx.save();
+    if (currentTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = currentEraserSize;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = Math.max(1, currentStroke);
+    }
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.restore();
   }
 
   canvas.addEventListener('touchstart', e => {
@@ -2671,6 +2847,7 @@ function getPinchDistTouches(t1, t2) {
     }
     e.preventDefault();
     canvasPinchActive = false;
+    canvasPushUndo();
     canvasDrawing = true;
     const p = getPos(e);
     canvasLastX = p.x; canvasLastY = p.y;
@@ -2685,7 +2862,6 @@ function getPinchDistTouches(t1, t2) {
       const rect = canvas.getBoundingClientRect();
       const midX = canvasPinchMidX - rect.left;
       const midY = canvasPinchMidY - rect.top;
-      // Scale canvas about pinch midpoint using CSS transform
       canvas.style.transformOrigin = `${midX}px ${midY}px`;
       canvas.style.transform = `scale(${newZoom})`;
       canvasZoom = newZoom;
@@ -2694,7 +2870,7 @@ function getPinchDistTouches(t1, t2) {
     if (!canvasDrawing || e.touches.length !== 1) return;
     e.preventDefault();
     const p = getPos(e);
-    drawLine(canvasLastX, canvasLastY, p.x, p.y);
+    applyStroke(canvasLastX, canvasLastY, p.x, p.y);
     canvasLastX = p.x; canvasLastY = p.y;
   }, {passive: false});
 
@@ -2710,6 +2886,7 @@ function getPinchDistTouches(t1, t2) {
 
   // Mouse support
   canvas.addEventListener('mousedown', e => {
+    canvasPushUndo();
     canvasDrawing = true;
     const rect = canvas.getBoundingClientRect();
     canvasLastX = e.clientX - rect.left;
@@ -2719,7 +2896,7 @@ function getPinchDistTouches(t1, t2) {
     if (!canvasDrawing) return;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    drawLine(canvasLastX, canvasLastY, x, y);
+    applyStroke(canvasLastX, canvasLastY, x, y);
     canvasLastX = x; canvasLastY = y;
   });
   canvas.addEventListener('mouseup', () => {
@@ -2871,6 +3048,8 @@ function handlePillImgChange(input) {
 }
 
 // ==================== INIT ====================
+computePageRowCount();
+window.addEventListener('resize', computePageRowCount);
 processOverdueItems();
 // Apply saved profile preferences (theme/pill colors) without opening modal
 (function applyProfile() {
