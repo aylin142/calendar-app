@@ -91,7 +91,7 @@
 
   /* ===== NOTEBOOK LINES ===== */
   .notebook-page {
-    background: var(--warm-white);
+    background: var(--page-bg, var(--warm-white));
     min-height: 100%;
     padding-bottom: 32px;
   }
@@ -190,19 +190,36 @@
   }
 
   #nav-pill {
-    width: 52px; height: 28px; border-radius: 14px;
+    min-width: 60px; height: 32px; border-radius: 16px;
+    padding: 0 16px;
     background: var(--pill-bg);
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--pill-border);
     box-shadow: 0 1px 8px rgba(139,111,94,0.10), inset 0 0.5px 0 rgba(255,255,255,0.8);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    transition: transform 0.18s ease, opacity 0.18s ease;
+    transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease;
     user-select: none; touch-action: none;
     -webkit-tap-highlight-color: transparent;
   }
   #nav-pill:active { transform: scale(0.88); opacity: 0.7; }
-  #nav-pill-date { display: none; }
+  #nav-pill-date {
+    font-size: 16px; font-weight: 300; letter-spacing: -0.5px;
+    color: rgba(61,43,31,0.72); font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  @keyframes pillGoLeft {
+    0%   { transform: translateX(0) scale(1); }
+    35%  { transform: translateX(-14px) scale(0.90); }
+    100% { transform: translateX(0) scale(1); }
+  }
+  @keyframes pillGoRight {
+    0%   { transform: translateX(0) scale(1); }
+    35%  { transform: translateX(14px) scale(0.90); }
+    100% { transform: translateX(0) scale(1); }
+  }
+  #nav-pill.anim-left  { animation: pillGoLeft  0.32s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  #nav-pill.anim-right { animation: pillGoRight 0.32s cubic-bezier(0.34,1.56,0.64,1) forwards; }
 
   /* ===== MODALS ===== */
   .modal-overlay {
@@ -593,8 +610,16 @@
   .mini-cal-day.highlighted { background: var(--brown) !important; color: white !important; border-radius: 3px; }
 
   /* ===== AI MODAL CORNER SLIDE ===== */
-  #ai-modal .modal-sheet { transform: translateX(4%) translateY(102%); }
-  #ai-modal.open .modal-sheet { transform: translateX(0) translateY(0); }
+  #ai-modal .modal-sheet {
+    transform: translateX(6%) translateY(106%) scale(0.92);
+    transform-origin: right bottom;
+    opacity: 0;
+    transition: transform 0.46s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s ease;
+  }
+  #ai-modal.open .modal-sheet {
+    transform: translateX(0) translateY(0) scale(1);
+    opacity: 1;
+  }
 
   /* ===== CANVAS VIEW ===== */
   #canvas-view {
@@ -714,6 +739,38 @@
     transition: all var(--transition);
   }
   .lang-seg-btn.active { border-color: var(--brown); color: var(--brown); background: rgba(196,168,130,0.15); font-weight: 600; }
+
+  /* ===== CUSTOM COLOR SLOTS ===== */
+  .custom-slot {
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+    border: 2px dashed var(--line); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--text-light); flex-shrink: 0;
+    transition: transform 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .custom-slot.filled { border-style: solid; border-color: rgba(0,0,0,0.18); }
+  .custom-slot.active::after {
+    content: '✓'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 12px; font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .custom-slot.active { border-color: rgba(0,0,0,0.3); transform: scale(1.1); }
+
+  /* ===== BG SWATCHES ===== */
+  .bg-swatch {
+    width: 36px; height: 24px; border-radius: 8px; cursor: pointer;
+    border: 2px solid transparent; flex-shrink: 0;
+    transition: transform 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+  .bg-swatch.active { border-color: var(--brown); transform: scale(1.12); }
+  .profile-section-label {
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 14px 0 6px;
+  }
 </style>
 </head>
 <body>
@@ -1022,44 +1079,66 @@
     <div class="modal-handle"></div>
     <div class="modal-header">
       <span class="modal-title" id="profile-title">个人主页</span>
-      <button class="modal-close" onclick="closeModal('profile-modal')">&#10005;</button>
+      <button class="modal-close" onclick="cancelProfile()">&#10005;</button>
     </div>
     <div class="modal-body">
+      <!-- Avatar + Name -->
       <div class="profile-account">
         <div class="profile-avatar" id="profile-avatar-btn" onclick="document.getElementById('avatar-file-input').click()">
           <span id="profile-avatar-icon">🙂</span>
         </div>
         <div class="profile-name-wrap">
           <input class="profile-name" id="profile-name-input" type="text" value="我的日程本" maxlength="20" />
-          <div class="profile-name-hint">点击名称可编辑</div>
+          <div class="profile-name-hint">点击头像可换图 · 点击名称可编辑</div>
         </div>
       </div>
       <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="handleAvatarChange(this)">
-      <div class="settings-section-label">胶囊按钮颜色</div>
+
+      <!-- Pill color -->
+      <div class="profile-section-label">胶囊按钮颜色</div>
       <div class="color-swatches" id="pill-color-swatches">
-        <div class="theme-swatch" data-type="pill" data-color="rgba(139,111,94,0.18)" style="background:rgba(139,111,94,0.35);border-color:var(--line);" onclick="setPillColor(this)"></div>
-        <div class="theme-swatch" data-type="pill" data-color="rgba(139,111,94,0.85)" style="background:#8B6F5E;" onclick="setPillColor(this)"></div>
-        <div class="theme-swatch" data-type="pill" data-color="rgba(90,138,90,0.85)" style="background:#5A8A5A;" onclick="setPillColor(this)"></div>
-        <div class="theme-swatch" data-type="pill" data-color="rgba(91,127,166,0.85)" style="background:#5B7FA6;" onclick="setPillColor(this)"></div>
-        <div class="theme-swatch" data-type="pill" data-color="rgba(60,60,60,0.75)" style="background:#3C3C3C;" onclick="setPillColor(this)"></div>
-        <div class="theme-swatch" data-type="pill" data-color="rgba(180,100,110,0.75)" style="background:#B4646E;" onclick="setPillColor(this)"></div>
+        <div class="theme-swatch" data-color="rgba(139,111,94,0.18)" style="background:rgba(139,111,94,0.38);" onclick="setPillColorPreview(this)"></div>
+        <div class="theme-swatch" data-color="rgba(139,111,94,0.88)" style="background:#8B6F5E;" onclick="setPillColorPreview(this)"></div>
+        <div class="theme-swatch" data-color="rgba(90,138,90,0.88)" style="background:#5A8A5A;" onclick="setPillColorPreview(this)"></div>
+        <div class="theme-swatch" data-color="rgba(91,127,166,0.88)" style="background:#5B7FA6;" onclick="setPillColorPreview(this)"></div>
+        <div class="theme-swatch" data-color="rgba(60,60,60,0.78)" style="background:#3C3C3C;" onclick="setPillColorPreview(this)"></div>
+        <div class="theme-swatch" data-color="rgba(180,100,110,0.78)" style="background:#B4646E;" onclick="setPillColorPreview(this)"></div>
+        <div class="theme-swatch" data-color="rgba(200,160,80,0.82)" style="background:#C8A050;" onclick="setPillColorPreview(this)"></div>
+        <div class="theme-swatch" data-color="rgba(80,130,160,0.82)" style="background:#5082A0;" onclick="setPillColorPreview(this)"></div>
+        <div class="custom-slot" id="pill-custom-0" title="点击保存当前颜色">+</div>
+        <div class="custom-slot" id="pill-custom-1" title="点击保存当前颜色">+</div>
       </div>
       <label id="profile-img-label">
-        📷 从相册选择图片作为背景
+        📷 从相册选择图片作为胶囊背景
         <input type="file" id="pill-img-input" accept="image/*" style="display:none;" onchange="handlePillImgChange(this)">
       </label>
-      <div style="margin-top:20px;"></div>
-      <div class="settings-section-label">主题色</div>
+
+      <!-- Theme colors -->
+      <div class="profile-section-label">主题配色</div>
       <div class="color-swatches" id="theme-color-swatches">
-        <div class="theme-swatch active" data-color="#8B6F5E" style="background:#8B6F5E;" onclick="setThemeColor('#8B6F5E',this)"></div>
-        <div class="theme-swatch" data-color="#4A7C59" style="background:#4A7C59;" onclick="setThemeColor('#4A7C59',this)"></div>
-        <div class="theme-swatch" data-color="#3A5A8A" style="background:#3A5A8A;" onclick="setThemeColor('#3A5A8A',this)"></div>
-        <div class="theme-swatch" data-color="#7A5A8A" style="background:#7A5A8A;" onclick="setThemeColor('#7A5A8A',this)"></div>
-        <div class="theme-swatch" data-color="#A0617A" style="background:#A0617A;" onclick="setThemeColor('#A0617A',this)"></div>
-        <div class="theme-swatch" data-color="#5A5A5A" style="background:#5A5A5A;" onclick="setThemeColor('#5A5A5A',this)"></div>
+        <div class="theme-swatch" data-color="#8B6F5E" style="background:#8B6F5E;" onclick="setThemeColorPreview('#8B6F5E',this)"></div>
+        <div class="theme-swatch" data-color="#4A7C59" style="background:#4A7C59;" onclick="setThemeColorPreview('#4A7C59',this)"></div>
+        <div class="theme-swatch" data-color="#3A5A8A" style="background:#3A5A8A;" onclick="setThemeColorPreview('#3A5A8A',this)"></div>
+        <div class="theme-swatch" data-color="#7A5A8A" style="background:#7A5A8A;" onclick="setThemeColorPreview('#7A5A8A',this)"></div>
+        <div class="theme-swatch" data-color="#A0617A" style="background:#A0617A;" onclick="setThemeColorPreview('#A0617A',this)"></div>
+        <div class="theme-swatch" data-color="#5A5A5A" style="background:#5A5A5A;" onclick="setThemeColorPreview('#5A5A5A',this)"></div>
+        <div class="custom-slot" id="theme-custom-0" title="点击保存当前主题色">+</div>
+        <div class="custom-slot" id="theme-custom-1" title="点击保存当前主题色">+</div>
+      </div>
+
+      <!-- Background color -->
+      <div class="profile-section-label">页面背景色</div>
+      <div class="color-swatches" id="bg-color-swatches">
+        <div class="bg-swatch" data-bg="#FAF7F2" style="background:#FAF7F2;" onclick="setBgColorPreview('#FAF7F2',this)"></div>
+        <div class="bg-swatch" data-bg="#F6F4EE" style="background:#F6F4EE;" onclick="setBgColorPreview('#F6F4EE',this)"></div>
+        <div class="bg-swatch" data-bg="#F0EDE6" style="background:#F0EDE6;" onclick="setBgColorPreview('#F0EDE6',this)"></div>
+        <div class="bg-swatch" data-bg="#EDF2ED" style="background:#EDF2ED;" onclick="setBgColorPreview('#EDF2ED',this)"></div>
+        <div class="bg-swatch" data-bg="#EDF0F5" style="background:#EDF0F5;" onclick="setBgColorPreview('#EDF0F5',this)"></div>
+        <div class="bg-swatch" data-bg="#F5EDF2" style="background:#F5EDF2;" onclick="setBgColorPreview('#F5EDF2',this)"></div>
       </div>
     </div>
     <div class="modal-actions">
+      <button class="btn-secondary" onclick="cancelProfile()" id="profile-cancel-btn">取消</button>
       <button class="btn-primary" onclick="saveProfile()" id="profile-save-btn">保存</button>
     </div>
   </div>
@@ -1557,7 +1636,10 @@ function updateCalIcon() {
   monthEl.textContent = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][now.getMonth()];
 }
 
-function updateNavPill() { /* pill is decoration only – no text */ }
+function updateNavPill() {
+  const el = document.getElementById('nav-pill-date');
+  if (el) el.textContent = new Date().getDate();
+}
 
 // ==================== SWIPE ====================
 const swipeContainer = document.getElementById('swipe-container');
@@ -2601,11 +2683,11 @@ function goToToday() {
     if (pillLongPressed) { pillLongPressed = false; return; }
     const dx = e.changedTouches[0].clientX - startX;
     if (!hasSwiped || Math.abs(dx) < 10) {
-      goToToday();
+      pillAnimate('left', goToToday);
     } else if (dx < 0) {
-      goToToday();
+      pillAnimate('left', goToToday);
     } else {
-      openAIModal();
+      pillAnimate('right', openAIModal);
     }
     hasSwiped = false;
   }, {passive: true});
@@ -2640,20 +2722,33 @@ function goToToday() {
     if (mLongPressed) { mLongPressed = false; mStartX = 0; mDragging = false; return; }
     const dx = e.clientX - mStartX;
     if (!mDragging || Math.abs(dx) < 10) {
-      goToToday();
+      pillAnimate('left', goToToday);
     } else if (dx < 0) {
-      goToToday();
+      pillAnimate('left', goToToday);
     } else {
-      openAIModal();
+      pillAnimate('right', openAIModal);
     }
     mStartX = 0; mDragging = false;
   });
 
   pill.addEventListener('click', e => {
     if (Date.now() - lastTouchTime < 400) return;
-    goToToday();
+    pillAnimate('left', goToToday);
   });
 })();
+
+function pillAnimate(dir, cb) {
+  const pill = document.getElementById('nav-pill');
+  const cls = dir === 'left' ? 'anim-left' : 'anim-right';
+  pill.classList.remove('anim-left', 'anim-right');
+  requestAnimationFrame(() => {
+    pill.classList.add(cls);
+    setTimeout(() => {
+      pill.classList.remove(cls);
+      cb();
+    }, 280);
+  });
+}
 
 // ==================== CANVAS ====================
 function initCanvas(dateStr) {
@@ -2963,10 +3058,32 @@ function getPinchDistTouches(t1, t2) {
 })();
 
 // ==================== PROFILE MODAL ====================
+// Snapshot for cancel/revert
+let _profSnap = {};
+// Pending previews (applied live, committed on save)
+let _pendTheme = null;
+let _pendPill = null;
+let _pendPillImg = null;
+let _pendBg = null;
+
 function openProfileModal() {
+  // Save snapshot for cancel
+  _profSnap = {
+    theme: localStorage.getItem('profile_theme') || '#8B6F5E',
+    pill:  localStorage.getItem('profile_pill')  || 'rgba(139,111,94,0.18)',
+    pillImg: localStorage.getItem('profile_pill_img') || '',
+    bg:    localStorage.getItem('profile_bg')    || '#FAF7F2',
+  };
+  _pendTheme = _profSnap.theme;
+  _pendPill  = _profSnap.pill;
+  _pendPillImg = _profSnap.pillImg;
+  _pendBg    = _profSnap.bg;
+
+  // Populate name
   const name = localStorage.getItem('profile_name') || '我的日程本';
   document.getElementById('profile-name-input').value = name;
 
+  // Populate avatar
   const avatarUrl = localStorage.getItem('profile_avatar') || '';
   const avatarEl = document.getElementById('profile-avatar-btn');
   if (avatarUrl) {
@@ -2975,15 +3092,15 @@ function openProfileModal() {
     avatarEl.innerHTML = '<span id="profile-avatar-icon">🙂</span>';
   }
 
-  const savedTheme = localStorage.getItem('profile_theme') || '#8B6F5E';
-  document.querySelectorAll('#theme-color-swatches .theme-swatch').forEach(s => {
-    s.classList.toggle('active', s.dataset.color === savedTheme);
-  });
+  // Mark active pill swatch
+  syncPillSwatches(_pendPill);
+  // Mark active theme swatch
+  syncThemeSwatches(_pendTheme);
+  // Mark active bg swatch
+  syncBgSwatches(_pendBg);
 
-  const savedPill = localStorage.getItem('profile_pill') || 'rgba(139,111,94,0.18)';
-  document.querySelectorAll('#pill-color-swatches .theme-swatch').forEach(s => {
-    s.classList.toggle('active', s.dataset.color === savedPill);
-  });
+  // Load custom slots
+  loadCustomSlots();
 
   document.getElementById('profile-title').textContent = lang === 'zh' ? '个人主页' : 'Profile';
   openModal('profile-modal');
@@ -2994,31 +3111,147 @@ function loadProfile() {
   openProfileModal();
 }
 
+function cancelProfile() {
+  // Restore all CSS vars to snapshot
+  document.documentElement.style.setProperty('--brown', _profSnap.theme || '#8B6F5E');
+  document.documentElement.style.setProperty('--page-bg', _profSnap.bg || '#FAF7F2');
+  const pill = document.getElementById('nav-pill');
+  if (_profSnap.pillImg) {
+    pill.style.backgroundImage = `url(${_profSnap.pillImg})`;
+    pill.style.backgroundSize = 'cover';
+    pill.style.backgroundPosition = 'center';
+  } else {
+    pill.style.backgroundImage = '';
+    document.documentElement.style.setProperty('--pill-bg', _profSnap.pill || 'rgba(139,111,94,0.18)');
+  }
+  closeModal('profile-modal');
+}
+
 function saveProfile() {
   const name = document.getElementById('profile-name-input').value.trim() || '我的日程本';
   localStorage.setItem('profile_name', name);
+  if (_pendTheme)   localStorage.setItem('profile_theme', _pendTheme);
+  if (_pendPill)    localStorage.setItem('profile_pill', _pendPill);
+  if (_pendBg)      localStorage.setItem('profile_bg', _pendBg);
+  if (_pendPillImg) localStorage.setItem('profile_pill_img', _pendPillImg);
+  else              localStorage.removeItem('profile_pill_img');
   closeModal('profile-modal');
   showToast(lang === 'zh' ? '已保存' : 'Saved');
 }
 
-function setThemeColor(color, el) {
-  document.querySelectorAll('#theme-color-swatches .theme-swatch').forEach(s => s.classList.remove('active'));
-  if (el) el.classList.add('active');
+// ---- Preview helpers ----
+function setThemeColorPreview(color, el) {
+  _pendTheme = color;
   document.documentElement.style.setProperty('--brown', color);
-  localStorage.setItem('profile_theme', color);
+  syncThemeSwatches(color);
 }
 
-function setPillColor(el) {
-  document.querySelectorAll('#pill-color-swatches .theme-swatch').forEach(s => s.classList.remove('active'));
-  if (el) el.classList.add('active');
+function syncThemeSwatches(color) {
+  document.querySelectorAll('#theme-color-swatches .theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === color);
+  });
+  document.querySelectorAll('#theme-color-swatches .custom-slot').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === color && s.classList.contains('filled'));
+  });
+}
+
+function setPillColorPreview(el) {
   const color = el.dataset.color;
+  if (!color) return;
+  _pendPill = color;
+  _pendPillImg = '';
   const pill = document.getElementById('nav-pill');
   pill.style.backgroundImage = '';
   document.documentElement.style.setProperty('--pill-bg', color);
-  localStorage.setItem('profile_pill', color);
-  localStorage.removeItem('profile_pill_img');
+  syncPillSwatches(color);
 }
 
+function syncPillSwatches(color) {
+  document.querySelectorAll('#pill-color-swatches .theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === color);
+  });
+  document.querySelectorAll('#pill-color-swatches .custom-slot').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === color && s.classList.contains('filled'));
+  });
+}
+
+function setBgColorPreview(color, el) {
+  _pendBg = color;
+  document.documentElement.style.setProperty('--page-bg', color);
+  syncBgSwatches(color);
+}
+
+function syncBgSwatches(color) {
+  document.querySelectorAll('#bg-color-swatches .bg-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.bg === color);
+  });
+}
+
+// ---- Custom color slots ----
+function loadCustomSlots() {
+  for (let i = 0; i < 2; i++) {
+    const pc = localStorage.getItem(`profile_pill_custom_${i}`) || '';
+    updateCustomSlotUI('pill', i, pc);
+    const tc = localStorage.getItem(`profile_theme_custom_${i}`) || '';
+    updateCustomSlotUI('theme', i, tc);
+  }
+  // Bind long-press to clear
+  for (let i = 0; i < 2; i++) {
+    const ps = document.getElementById(`pill-custom-${i}`);
+    const ts = document.getElementById(`theme-custom-${i}`);
+    if (ps) bindLongPress(ps, () => {
+      if (!ps.classList.contains('filled')) return;
+      localStorage.removeItem(`profile_pill_custom_${i}`);
+      updateCustomSlotUI('pill', i, '');
+      showToast('已清除');
+    });
+    if (ts) bindLongPress(ts, () => {
+      if (!ts.classList.contains('filled')) return;
+      localStorage.removeItem(`profile_theme_custom_${i}`);
+      updateCustomSlotUI('theme', i, '');
+      showToast('已清除');
+    });
+  }
+}
+
+function updateCustomSlotUI(type, slot, color) {
+  const el = document.getElementById(`${type}-custom-${slot}`);
+  if (!el) return;
+  if (color) {
+    el.dataset.color = color;
+    el.classList.add('filled');
+    el.style.background = color;
+    el.textContent = '';
+    el.title = '点击应用 · 长按清除';
+    el.onclick = type === 'pill'
+      ? () => setPillColorPreview(el)
+      : () => setThemeColorPreview(color, el);
+  } else {
+    el.dataset.color = '';
+    el.classList.remove('filled');
+    el.classList.remove('active');
+    el.style.background = '';
+    el.textContent = '+';
+    el.title = '点击保存当前颜色';
+    el.onclick = type === 'pill'
+      ? () => saveCustomPillSlot(slot)
+      : () => saveCustomThemeSlot(slot);
+  }
+}
+
+function saveCustomPillSlot(slot) {
+  const color = _pendPill || localStorage.getItem('profile_pill') || 'rgba(139,111,94,0.18)';
+  localStorage.setItem(`profile_pill_custom_${slot}`, color);
+  updateCustomSlotUI('pill', slot, color);
+}
+
+function saveCustomThemeSlot(slot) {
+  const color = _pendTheme || localStorage.getItem('profile_theme') || '#8B6F5E';
+  localStorage.setItem(`profile_theme_custom_${slot}`, color);
+  updateCustomSlotUI('theme', slot, color);
+}
+
+// ---- Avatar / Pill image ----
 function handleAvatarChange(input) {
   const file = input.files[0];
   if (!file) return;
@@ -3038,11 +3271,14 @@ function handlePillImgChange(input) {
   const reader = new FileReader();
   reader.onload = e => {
     const url = e.target.result;
-    localStorage.setItem('profile_pill_img', url);
+    _pendPillImg = url;
+    _pendPill = '';
     const pill = document.getElementById('nav-pill');
     pill.style.backgroundImage = `url(${url})`;
     pill.style.backgroundSize = 'cover';
     pill.style.backgroundPosition = 'center';
+    // Deselect all pill swatches
+    document.querySelectorAll('#pill-color-swatches .theme-swatch, #pill-color-swatches .custom-slot').forEach(s => s.classList.remove('active'));
   };
   reader.readAsDataURL(file);
 }
@@ -3051,10 +3287,12 @@ function handlePillImgChange(input) {
 computePageRowCount();
 window.addEventListener('resize', computePageRowCount);
 processOverdueItems();
-// Apply saved profile preferences (theme/pill colors) without opening modal
+// Apply saved profile preferences (theme/pill/bg colors) without opening modal
 (function applyProfile() {
   const savedTheme = localStorage.getItem('profile_theme') || '#8B6F5E';
   document.documentElement.style.setProperty('--brown', savedTheme);
+  const savedBg = localStorage.getItem('profile_bg') || '#FAF7F2';
+  document.documentElement.style.setProperty('--page-bg', savedBg);
   const savedPillImg = localStorage.getItem('profile_pill_img');
   const savedPill = localStorage.getItem('profile_pill') || 'rgba(139,111,94,0.18)';
   const pill = document.getElementById('nav-pill');
