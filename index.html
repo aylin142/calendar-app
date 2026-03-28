@@ -1306,7 +1306,7 @@ const T = {
     catNone: '无',
     settingsSaved: '设置已保存',
     settingsAiLabel: 'AI功能设置',
-    noApiKeySettings: '请在设置中填写 DeepSeek API Key 以启用AI总结功能',
+    noApiKeySettings: '请在设置中填写 API Key 以启用AI总结功能',
   },
   en: {
     appTitle: 'Planner',
@@ -1387,7 +1387,7 @@ const T = {
     catNone: 'None',
     settingsSaved: 'Settings saved',
     settingsAiLabel: 'AI Settings',
-    noApiKeySettings: 'Please add your DeepSeek API Key in Settings to enable AI Summary',
+    noApiKeySettings: 'Please add an API Key in Settings to enable AI Summary',
   }
 };
 
@@ -2566,7 +2566,7 @@ document.getElementById('settings-btn').addEventListener('click', () => {
   document.getElementById('settings-cancel').textContent = t('cancel');
   document.getElementById('settings-save').textContent = t('save');
   document.getElementById('settings-ai-label').textContent = t('settingsAiLabel');
-  document.getElementById('settings-lbl-apikey').textContent = t('apiKey');
+  document.getElementById('settings-lbl-apikey').textContent = getProviderKeyLabel(aiProvider);
   document.getElementById('settings-key-note').textContent = t('apiKeyNote');
   // Populate provider seg + key
   setSegActive('ai-provider-seg', aiProvider);
@@ -2604,6 +2604,12 @@ document.getElementById('input-mode-seg').addEventListener('click', e => {
   updateModeTip();
 });
 
+function getProviderKeyLabel(provId) {
+  if (provId === 'deepseek')    return 'DEEPSEEK API KEY';
+  if (provId === 'siliconflow') return '硅基流动 API KEY';
+  return 'API KEY';
+}
+
 document.getElementById('ai-provider-seg').addEventListener('click', e => {
   const btn = e.target.closest('.seg-btn');
   if (!btn) return;
@@ -2614,6 +2620,7 @@ document.getElementById('ai-provider-seg').addEventListener('click', e => {
   setSegActive('ai-provider-seg', btn.dataset.val);
   const newProv = AI_PROVIDERS[btn.dataset.val] || AI_PROVIDERS.deepseek;
   document.getElementById('settings-apikey').value = localStorage.getItem(newProv.key) || '';
+  document.getElementById('settings-lbl-apikey').textContent = getProviderKeyLabel(btn.dataset.val);
   const isCustom = btn.dataset.val === 'custom';
   document.getElementById('settings-custom-fields').style.display = isCustom ? '' : 'none';
   if (isCustom) {
