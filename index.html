@@ -20,22 +20,25 @@
     --shadow: rgba(139,111,94,0.15);
     --radius: 12px;
     --transition: 0.22s cubic-bezier(.4,0,.2,1);
+    --pill-bg: rgba(139,111,94,0.18);
+    --pill-border: rgba(255,255,255,0.55);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+  html, body { height: 100%; }
   body {
     font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
     background: var(--warm-white);
     color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
+    height: 100vh; overflow: hidden;
+    display: flex; flex-direction: column;
     font-size: 15px;
   }
 
   /* ===== HEADER ===== */
   #app-header {
-    position: sticky; top: 0; z-index: 100;
+    position: relative; z-index: 100; flex-shrink: 0;
     background: var(--warm-white);
     border-bottom: 1.5px solid var(--line);
     padding: 10px 16px 8px;
@@ -68,27 +71,28 @@
   }
   .icon-btn:active { transform: scale(0.9); background: var(--line); }
 
-  #lang-btn {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
-    width: auto; padding: 0 10px; border-radius: 20px;
+  #view-toggle-btn {
     color: var(--brown); background: var(--cream);
   }
+  #view-toggle-btn svg { display: block; }
 
   /* ===== SWIPE AREA ===== */
   #swipe-container {
     position: relative; overflow: hidden;
-    min-height: calc(100vh - 120px);
+    flex: 1;
   }
 
   .day-view {
-    position: absolute; top: 0; width: 100%;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
     will-change: transform;
   }
 
   /* ===== NOTEBOOK LINES ===== */
   .notebook-page {
     background: var(--warm-white);
-    padding: 0 0 80px;
+    min-height: 100%;
+    padding-bottom: 32px;
   }
 
   .schedule-row {
@@ -177,29 +181,27 @@
 
   /* ===== BOTTOM TOOLBAR ===== */
   #bottom-bar {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: var(--warm-white); border-top: 1.5px solid var(--line);
-    padding: 10px 20px 28px;
+    position: relative; z-index: 100; flex-shrink: 0;
+    background: transparent;
+    padding: 10px 20px 18px;
     display: flex; align-items: center; justify-content: center;
-    z-index: 100;
-    box-shadow: 0 -2px 12px var(--shadow);
+    border-top: 1px solid rgba(232,221,208,0.7);
   }
 
   #nav-pill {
-    width: 72px; height: 42px; border-radius: 21px;
-    background: var(--brown);
+    width: 52px; height: 28px; border-radius: 14px;
+    background: var(--pill-bg);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--pill-border);
+    box-shadow: 0 1px 8px rgba(139,111,94,0.10), inset 0 0.5px 0 rgba(255,255,255,0.8);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    box-shadow: 0 4px 16px rgba(139,111,94,0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.18s ease, opacity 0.18s ease;
     user-select: none; touch-action: none;
     -webkit-tap-highlight-color: transparent;
   }
-  #nav-pill:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(139,111,94,0.2); }
-  #nav-pill-date {
-    font-size: 20px; font-weight: 700; color: white;
-    letter-spacing: -0.5px; line-height: 1; pointer-events: none;
-  }
+  #nav-pill:active { transform: scale(0.88); opacity: 0.7; }
+  #nav-pill-date { display: none; }
 
   /* ===== MODALS ===== */
   .modal-overlay {
@@ -561,24 +563,27 @@
   .cat-tag.life { color: #5A8A5A; background: rgba(127,185,127,0.15); }
   .cat-tag.study { color: #5B7FA6; background: rgba(91,127,166,0.15); }
 
-  /* ===== CALENDAR DATE ICON ===== */
+  /* ===== CALENDAR DATE ICON (iOS style) ===== */
   #cal-btn {
     overflow: hidden; padding: 0;
-    background: white; border: 1.5px solid var(--line);
+    background: white;
+    border: 1px solid rgba(232,221,208,0.8);
+    border-radius: 10px;
+    box-shadow: 0 1.5px 6px rgba(139,111,94,0.13);
   }
   .cal-icon-inner {
     display: flex; flex-direction: column;
     align-items: center; width: 100%; height: 100%;
   }
   .cal-icon-month {
-    font-size: 7px; font-weight: 800; color: white; letter-spacing: 0.2px;
+    font-size: 7px; font-weight: 800; color: white; letter-spacing: 0.5px;
     background: var(--red); width: 100%; text-align: center;
     padding: 2.5px 0; flex-shrink: 0; text-transform: uppercase;
   }
   .cal-icon-day {
-    font-size: 17px; font-weight: 700; color: var(--text);
+    font-size: 18px; font-weight: 700; color: var(--text);
     flex: 1; display: flex; align-items: center; justify-content: center;
-    line-height: 1;
+    line-height: 1; letter-spacing: -0.5px;
   }
 
   /* ===== HIGHLIGHTED CALENDAR DAYS ===== */
@@ -589,6 +594,102 @@
   /* ===== AI MODAL CORNER SLIDE ===== */
   #ai-modal .modal-sheet { transform: translateX(4%) translateY(102%); }
   #ai-modal.open .modal-sheet { transform: translateX(0) translateY(0); }
+
+  /* ===== CANVAS VIEW ===== */
+  #canvas-view {
+    flex: 1; display: none; flex-direction: column;
+    background: var(--warm-white); position: relative; overflow: hidden;
+  }
+  #canvas-view.active { display: flex; }
+  #drawing-canvas {
+    flex: 1; display: block; touch-action: none;
+    cursor: crosshair;
+  }
+  #canvas-toolbar {
+    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px 6px;
+    border-top: 1px solid var(--line);
+    background: var(--warm-white);
+  }
+  .canvas-color-swatch {
+    width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: transform 0.15s;
+    flex-shrink: 0;
+  }
+  .canvas-color-swatch.active { border-color: var(--brown); transform: scale(1.15); }
+  #canvas-stroke-range {
+    flex: 1; accent-color: var(--brown);
+    height: 3px;
+  }
+  #canvas-clear-btn {
+    font-size: 13px; padding: 4px 10px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--cream);
+    color: var(--text-muted); cursor: pointer; flex-shrink: 0;
+  }
+  /* Fullscreen canvas */
+  body.canvas-fullscreen #app-header,
+  body.canvas-fullscreen #bottom-bar,
+  body.canvas-fullscreen #canvas-toolbar { display: none !important; }
+  body.canvas-fullscreen #canvas-view { flex: 1; }
+  #canvas-fullscreen-back {
+    position: fixed; top: 12px; left: 12px; z-index: 200;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(250,247,242,0.85); border: 1px solid var(--line);
+    color: var(--brown); font-size: 18px;
+    display: none; align-items: center; justify-content: center;
+    cursor: pointer; backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  body.canvas-fullscreen #canvas-fullscreen-back { display: flex; }
+
+  /* ===== PROFILE MODAL ===== */
+  .profile-account {
+    display: flex; align-items: center; gap: 14px;
+    padding: 8px 0 20px;
+  }
+  .profile-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--cream); border: 2px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; cursor: pointer; overflow: hidden; flex-shrink: 0;
+  }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-name-wrap { flex: 1; }
+  .profile-name {
+    font-size: 17px; font-weight: 600; color: var(--text);
+    border: none; outline: none; background: transparent;
+    font-family: inherit; width: 100%;
+  }
+  .profile-name-hint { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+  .color-swatches {
+    display: flex; gap: 10px; flex-wrap: wrap; padding: 6px 0 4px;
+  }
+  .theme-swatch {
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+    border: 2.5px solid transparent; transition: transform 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .theme-swatch.active::after {
+    content: '✓'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 14px; font-weight: 700;
+  }
+  .theme-swatch.active { border-color: rgba(0,0,0,0.3); transform: scale(1.1); }
+  #profile-img-label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--brown); cursor: pointer;
+    padding: 6px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--cream);
+    margin-top: 6px;
+  }
+  .lang-seg { display: flex; gap: 8px; padding: 6px 0; }
+  .lang-seg-btn {
+    flex: 1; padding: 8px; border: 1.5px solid var(--line); border-radius: 10px;
+    background: var(--cream); color: var(--text-muted);
+    font-size: 14px; cursor: pointer; font-family: inherit;
+    transition: all var(--transition);
+  }
+  .lang-seg-btn.active { border-color: var(--brown); color: var(--brown); background: rgba(196,168,130,0.15); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -607,7 +708,9 @@
         <div class="cal-icon-day" id="cal-icon-day">1</div>
       </div>
     </button>
-    <button class="icon-btn" id="lang-btn">中/EN</button>
+    <button class="icon-btn" id="view-toggle-btn" title="切换视图">
+      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="4.5" x2="14" y2="4.5"/><line x1="3" y1="8.5" x2="14" y2="8.5"/><line x1="3" y1="12.5" x2="14" y2="12.5"/></svg>
+    </button>
   </div>
 </div>
 
@@ -617,6 +720,21 @@
   <div class="day-view notebook-page" id="page-cur"></div>
   <div class="day-view notebook-page" id="page-next"></div>
 </div>
+
+<!-- CANVAS VIEW -->
+<div id="canvas-view">
+  <canvas id="drawing-canvas"></canvas>
+  <div id="canvas-toolbar">
+    <div class="canvas-color-swatch active" data-color="#3D2B1F" style="background:#3D2B1F;" onclick="setCanvasColor('#3D2B1F',this)"></div>
+    <div class="canvas-color-swatch" data-color="#C0392B" style="background:#C0392B;" onclick="setCanvasColor('#C0392B',this)"></div>
+    <div class="canvas-color-swatch" data-color="#5A8A5A" style="background:#5A8A5A;" onclick="setCanvasColor('#5A8A5A',this)"></div>
+    <div class="canvas-color-swatch" data-color="#5B7FA6" style="background:#5B7FA6;" onclick="setCanvasColor('#5B7FA6',this)"></div>
+    <div class="canvas-color-swatch" data-color="#A08878" style="background:#A08878;" onclick="setCanvasColor('#A08878',this)"></div>
+    <input type="range" id="canvas-stroke-range" min="1" max="20" value="3" oninput="currentStroke=+this.value">
+    <button id="canvas-clear-btn" onclick="clearCanvas()">清除</button>
+  </div>
+</div>
+<button id="canvas-fullscreen-back" onclick="exitCanvasFullscreen()">←</button>
 
 <!-- BOTTOM BAR -->
 <div id="bottom-bar">
@@ -846,10 +964,65 @@
         <input class="field-input" id="settings-apikey" type="password" placeholder="sk-..." autocomplete="off" />
         <div style="font-size:11px;color:var(--text-light);margin-top:4px;" id="settings-key-note">Key 仅存储在本地，不会上传</div>
       </div>
+      <div style="margin-top:20px;"></div>
+      <div class="settings-section-label" id="settings-lang-label">语言 / Language</div>
+      <div class="lang-seg" id="lang-seg">
+        <button class="lang-seg-btn" data-val="zh" id="lang-zh-btn">中文</button>
+        <button class="lang-seg-btn" data-val="en" id="lang-en-btn">English</button>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('settings-modal')" id="settings-cancel">取消</button>
       <button class="btn-primary" onclick="saveSettings()" id="settings-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="profile-title">个人主页</span>
+      <button class="modal-close" onclick="closeModal('profile-modal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="profile-account">
+        <div class="profile-avatar" id="profile-avatar-btn" onclick="document.getElementById('avatar-file-input').click()">
+          <span id="profile-avatar-icon">🙂</span>
+        </div>
+        <div class="profile-name-wrap">
+          <input class="profile-name" id="profile-name-input" type="text" value="我的日程本" maxlength="20" />
+          <div class="profile-name-hint">点击名称可编辑</div>
+        </div>
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="handleAvatarChange(this)">
+      <div class="settings-section-label">胶囊按钮颜色</div>
+      <div class="color-swatches" id="pill-color-swatches">
+        <div class="theme-swatch" data-type="pill" data-color="rgba(139,111,94,0.18)" style="background:rgba(139,111,94,0.35);border-color:var(--line);" onclick="setPillColor(this)"></div>
+        <div class="theme-swatch" data-type="pill" data-color="rgba(139,111,94,0.85)" style="background:#8B6F5E;" onclick="setPillColor(this)"></div>
+        <div class="theme-swatch" data-type="pill" data-color="rgba(90,138,90,0.85)" style="background:#5A8A5A;" onclick="setPillColor(this)"></div>
+        <div class="theme-swatch" data-type="pill" data-color="rgba(91,127,166,0.85)" style="background:#5B7FA6;" onclick="setPillColor(this)"></div>
+        <div class="theme-swatch" data-type="pill" data-color="rgba(60,60,60,0.75)" style="background:#3C3C3C;" onclick="setPillColor(this)"></div>
+        <div class="theme-swatch" data-type="pill" data-color="rgba(180,100,110,0.75)" style="background:#B4646E;" onclick="setPillColor(this)"></div>
+      </div>
+      <label id="profile-img-label">
+        📷 从相册选择图片作为背景
+        <input type="file" id="pill-img-input" accept="image/*" style="display:none;" onchange="handlePillImgChange(this)">
+      </label>
+      <div style="margin-top:20px;"></div>
+      <div class="settings-section-label">主题色</div>
+      <div class="color-swatches" id="theme-color-swatches">
+        <div class="theme-swatch active" data-color="#8B6F5E" style="background:#8B6F5E;" onclick="setThemeColor('#8B6F5E',this)"></div>
+        <div class="theme-swatch" data-color="#4A7C59" style="background:#4A7C59;" onclick="setThemeColor('#4A7C59',this)"></div>
+        <div class="theme-swatch" data-color="#3A5A8A" style="background:#3A5A8A;" onclick="setThemeColor('#3A5A8A',this)"></div>
+        <div class="theme-swatch" data-color="#7A5A8A" style="background:#7A5A8A;" onclick="setThemeColor('#7A5A8A',this)"></div>
+        <div class="theme-swatch" data-color="#A0617A" style="background:#A0617A;" onclick="setThemeColor('#A0617A',this)"></div>
+        <div class="theme-swatch" data-color="#5A5A5A" style="background:#5A5A5A;" onclick="setThemeColor('#5A5A5A',this)"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="saveProfile()" id="profile-save-btn">保存</button>
     </div>
   </div>
 </div>
@@ -878,6 +1051,7 @@ let transferFromDate = null;
 // Touch / swipe
 let touchStartX = 0;
 let touchStartY = 0;
+let touchStartTime = 0;
 let isSwiping = false;
 
 // Long press
@@ -894,6 +1068,18 @@ let currentCategory = 'work';
 
 // Highlighted dates in calendar (long-press to mark)
 const highlightedDates = new Set();
+
+// ==================== CANVAS STATE ====================
+let viewMode = 'text'; // 'text' | 'canvas'
+let canvasCurrentDate = null;
+let canvasDrawing = false;
+let currentColor = '#3D2B1F';
+let currentStroke = 3;
+let canvasLastX = 0, canvasLastY = 0;
+let canvasPinchActive = false;
+let canvasPinchStartDist = 0, canvasPinchStartZoom = 1;
+let canvasPinchMidX = 0, canvasPinchMidY = 0;
+let canvasZoom = 1, canvasOffX = 0, canvasOffY = 0;
 
 // ==================== I18N ====================
 const T = {
@@ -1188,16 +1374,12 @@ function renderPage(container, dateStr) {
 
   sortedItems.forEach(item => {
     html += renderItemRow(item, dateStr);
-    // Blank input row after every item
-    html += renderEmptyRow(dateStr, null, 'after-' + item.id);
   });
 
-  // Dynamically fill visible area
-  const headerH = document.getElementById('app-header').offsetHeight || 60;
-  const bottomH = document.getElementById('bottom-bar').offsetHeight || 80;
-  const visibleRows = Math.ceil((window.innerHeight - headerH - bottomH) / 48) + 2;
-  const renderedRows = sortedItems.length * 2; // each item + its trailing blank row
-  const extraRows = Math.max(3, visibleRows - renderedRows);
+  // Dynamically fill remaining screen with blank rows
+  const contH = document.getElementById('swipe-container').offsetHeight || (window.innerHeight - 130);
+  const visibleRows = Math.ceil(contH / 48) + 2;
+  const extraRows = Math.max(4, visibleRows - sortedItems.length);
   for (let i = 0; i < extraRows; i++) {
     html += renderEmptyRow(dateStr, null, 'end-' + i);
   }
@@ -1312,15 +1494,10 @@ function updateCalIcon() {
   if (!monthEl || !dayEl) return;
   const now = new Date();
   dayEl.textContent = now.getDate();
-  monthEl.textContent = lang === 'zh'
-    ? ['一','二','三','四','五','六','七','八','九','十','十一','十二'][now.getMonth()] + '月'
-    : ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][now.getMonth()];
+  monthEl.textContent = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][now.getMonth()];
 }
 
-function updateNavPill() {
-  const el = document.getElementById('nav-pill-date');
-  if (el) el.textContent = new Date().getDate();
-}
+function updateNavPill() { /* pill is decoration only – no text */ }
 
 // ==================== SWIPE ====================
 const swipeContainer = document.getElementById('swipe-container');
@@ -1328,6 +1505,7 @@ const swipeContainer = document.getElementById('swipe-container');
 swipeContainer.addEventListener('touchstart', e => {
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
+  touchStartTime = Date.now();
   isSwiping = false;
   if (e.touches.length === 2) {
     isPinching = true;
@@ -1362,18 +1540,23 @@ swipeContainer.addEventListener('touchend', e => {
   isPinching = false;
   if (!isSwiping) return;
   const dx = e.changedTouches[0].clientX - touchStartX;
-  const threshold = window.innerWidth * 0.3;
-  if (dx < -threshold) { navigateDay(1); }
-  else if (dx > threshold) { navigateDay(-1); }
+  const dt = Math.max(1, Date.now() - touchStartTime);
+  const velocity = Math.abs(dx) / dt; // px/ms
+  const threshold = 40;
+  const velThreshold = 0.35;
+  const goNext = dx < -threshold || (dx < -12 && velocity > velThreshold);
+  const goPrev = dx > threshold  || (dx > 12  && velocity > velThreshold);
+  if (goNext) { navigateDay(1); }
+  else if (goPrev) { navigateDay(-1); }
   else {
     const allPages = [
       document.getElementById('page-prev'),
       document.getElementById('page-cur'),
       document.getElementById('page-next')
     ];
-    allPages.forEach(p => { p.style.transition = 'transform 0.28s ease-in-out'; });
+    allPages.forEach(p => { p.style.transition = 'transform 0.24s ease-out'; });
     positionPages(0);
-    setTimeout(() => allPages.forEach(p => { p.style.transition = ''; }), 290);
+    setTimeout(() => allPages.forEach(p => { p.style.transition = ''; }), 250);
   }
   isSwiping = false;
 }, {passive: true});
@@ -1394,14 +1577,14 @@ function navigateDay(delta) {
   ];
   const targets = delta > 0 ? [-2*w, -w, 0] : [0, w, 2*w];
   pages.forEach((p,i) => {
-    p.style.transition = 'transform 0.28s ease-in-out';
+    p.style.transition = 'transform 0.24s ease-out';
     p.style.transform = `translateX(${targets[i]}px)`;
   });
   setTimeout(() => {
     pages.forEach(p => p.style.transition = '');
     currentDate = addDays(currentDate, delta);
     renderAll();
-  }, 290);
+  }, 250);
 }
 
 // ==================== LONG PRESS ====================
@@ -2235,6 +2418,10 @@ document.getElementById('settings-btn').addEventListener('click', () => {
   document.getElementById('settings-apikey').value = localStorage.getItem('planner_ai_key') || '';
   setSegActive('input-mode-seg', inputMode);
   updateModeTip();
+  // Sync lang buttons
+  document.querySelectorAll('#lang-seg .lang-seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === lang);
+  });
   openModal('settings-modal');
 });
 
@@ -2265,18 +2452,24 @@ function saveSettings() {
   } else {
     localStorage.removeItem('planner_ai_key');
   }
+  const langVal = document.querySelector('#lang-seg .lang-seg-btn.active')?.dataset.val || lang;
+  if (langVal !== lang) {
+    lang = langVal;
+    localStorage.setItem('planner_lang', lang);
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  }
   closeModal('settings-modal');
   renderAll();
   showToast(t('settingsSaved'));
 }
 
 // ==================== LANGUAGE ====================
-document.getElementById('lang-btn').addEventListener('click', () => {
-  lang = lang === 'zh' ? 'en' : 'zh';
-  localStorage.setItem('planner_lang', lang);
-  document.getElementById('lang-btn').textContent = lang === 'zh' ? '中/EN' : 'EN/中';
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  renderAll();
+// Lang toggle is in settings panel; wire up seg button click
+document.getElementById('lang-seg').addEventListener('click', e => {
+  const btn = e.target.closest('.lang-seg-btn');
+  if (!btn) return;
+  document.querySelectorAll('#lang-seg .lang-seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
 });
 
 // ==================== MODALS OPEN/CLOSE ====================
@@ -2317,15 +2510,21 @@ function goToToday() {
 (function() {
   const pill = document.getElementById('nav-pill');
   let startX = 0, hasSwiped = false, lastTouchTime = 0;
+  let pillLPTimer = null, pillLongPressed = false;
 
-  // Touch handlers
   pill.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
-    hasSwiped = false;
+    hasSwiped = false; pillLongPressed = false;
     pill.style.transition = 'none';
+    pillLPTimer = setTimeout(() => {
+      pillLongPressed = true;
+      loadProfile();
+      openModal('profile-modal');
+    }, 500);
   }, {passive: true});
 
   pill.addEventListener('touchmove', e => {
+    clearTimeout(pillLPTimer);
     const dx = e.touches[0].clientX - startX;
     if (Math.abs(dx) > 8) {
       hasSwiped = true;
@@ -2335,9 +2534,11 @@ function goToToday() {
   }, {passive: true});
 
   pill.addEventListener('touchend', e => {
+    clearTimeout(pillLPTimer);
     lastTouchTime = Date.now();
     pill.style.transition = '';
     pill.style.transform = '';
+    if (pillLongPressed) { pillLongPressed = false; return; }
     const dx = e.changedTouches[0].clientX - startX;
     if (!hasSwiped || Math.abs(dx) < 10) {
       goToToday();
@@ -2350,10 +2551,15 @@ function goToToday() {
   }, {passive: true});
 
   // Mouse handlers (desktop)
-  let mStartX = 0, mDragging = false;
+  let mStartX = 0, mDragging = false, mLPTimer = null, mLongPressed = false;
   pill.addEventListener('mousedown', e => {
-    mStartX = e.clientX; mDragging = false;
+    mStartX = e.clientX; mDragging = false; mLongPressed = false;
     pill.style.transition = 'none';
+    mLPTimer = setTimeout(() => {
+      mLongPressed = true;
+      loadProfile();
+      openModal('profile-modal');
+    }, 500);
     e.preventDefault();
   });
   window.addEventListener('mousemove', e => {
@@ -2361,14 +2567,17 @@ function goToToday() {
     const dx = e.clientX - mStartX;
     if (Math.abs(dx) > 8) {
       mDragging = true;
+      clearTimeout(mLPTimer);
       const shift = Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, 22);
       pill.style.transform = `translateX(${shift}px) scale(0.95)`;
     }
   });
   window.addEventListener('mouseup', e => {
     if (!mStartX) return;
+    clearTimeout(mLPTimer);
     pill.style.transition = '';
     pill.style.transform = '';
+    if (mLongPressed) { mLongPressed = false; mStartX = 0; mDragging = false; return; }
     const dx = e.clientX - mStartX;
     if (!mDragging || Math.abs(dx) < 10) {
       goToToday();
@@ -2380,19 +2589,306 @@ function goToToday() {
     mStartX = 0; mDragging = false;
   });
 
-  // Prevent ghost click after touch
   pill.addEventListener('click', e => {
     if (Date.now() - lastTouchTime < 400) return;
     goToToday();
   });
 })();
 
+// ==================== CANVAS ====================
+function initCanvas(dateStr) {
+  canvasCurrentDate = dateStr;
+  const canvas = document.getElementById('drawing-canvas');
+  canvas.width = canvas.offsetWidth || window.innerWidth;
+  canvas.height = canvas.offsetHeight || (window.innerHeight - 120);
+  canvasZoom = 1; canvasOffX = 0; canvasOffY = 0;
+  loadCanvasData(dateStr);
+}
+
+function saveCanvasData(dateStr) {
+  const canvas = document.getElementById('drawing-canvas');
+  try { localStorage.setItem('canvas_' + dateStr, canvas.toDataURL()); } catch(e) {}
+}
+
+function loadCanvasData(dateStr) {
+  const canvas = document.getElementById('drawing-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const saved = localStorage.getItem('canvas_' + dateStr);
+  if (!saved) return;
+  const img = new Image();
+  img.onload = () => { ctx.drawImage(img, 0, 0); };
+  img.src = saved;
+}
+
+function setCanvasColor(color, el) {
+  currentColor = color;
+  document.querySelectorAll('.canvas-color-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function clearCanvas() {
+  const canvas = document.getElementById('drawing-canvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  if (canvasCurrentDate) saveCanvasData(canvasCurrentDate);
+}
+
+function exitCanvasFullscreen() {
+  document.body.classList.remove('canvas-fullscreen');
+}
+
+function getPinchDistTouches(t1, t2) {
+  const dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+(function setupCanvasTouch() {
+  const canvas = document.getElementById('drawing-canvas');
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  function drawLine(x1, y1, x2, y2) {
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = Math.max(1, currentStroke);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      canvasDrawing = false;
+      canvasPinchActive = true;
+      canvasPinchStartDist = getPinchDistTouches(e.touches[0], e.touches[1]);
+      canvasPinchStartZoom = canvasZoom;
+      canvasPinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      canvasPinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      return;
+    }
+    e.preventDefault();
+    canvasPinchActive = false;
+    canvasDrawing = true;
+    const p = getPos(e);
+    canvasLastX = p.x; canvasLastY = p.y;
+  }, {passive: false});
+
+  canvas.addEventListener('touchmove', e => {
+    if (canvasPinchActive && e.touches.length === 2) {
+      e.preventDefault();
+      const dist = getPinchDistTouches(e.touches[0], e.touches[1]);
+      const ratio = dist / canvasPinchStartDist;
+      const newZoom = Math.min(4, Math.max(0.5, canvasPinchStartZoom * ratio));
+      const rect = canvas.getBoundingClientRect();
+      const midX = canvasPinchMidX - rect.left;
+      const midY = canvasPinchMidY - rect.top;
+      // Scale canvas about pinch midpoint using CSS transform
+      canvas.style.transformOrigin = `${midX}px ${midY}px`;
+      canvas.style.transform = `scale(${newZoom})`;
+      canvasZoom = newZoom;
+      return;
+    }
+    if (!canvasDrawing || e.touches.length !== 1) return;
+    e.preventDefault();
+    const p = getPos(e);
+    drawLine(canvasLastX, canvasLastY, p.x, p.y);
+    canvasLastX = p.x; canvasLastY = p.y;
+  }, {passive: false});
+
+  canvas.addEventListener('touchend', e => {
+    if (canvasPinchActive) {
+      canvasPinchActive = false;
+      if (canvasCurrentDate) saveCanvasData(canvasCurrentDate);
+      return;
+    }
+    canvasDrawing = false;
+    if (canvasCurrentDate) saveCanvasData(canvasCurrentDate);
+  }, {passive: true});
+
+  // Mouse support
+  canvas.addEventListener('mousedown', e => {
+    canvasDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    canvasLastX = e.clientX - rect.left;
+    canvasLastY = e.clientY - rect.top;
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (!canvasDrawing) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    drawLine(canvasLastX, canvasLastY, x, y);
+    canvasLastX = x; canvasLastY = y;
+  });
+  canvas.addEventListener('mouseup', () => {
+    canvasDrawing = false;
+    if (canvasCurrentDate) saveCanvasData(canvasCurrentDate);
+  });
+  canvas.addEventListener('mouseleave', () => { canvasDrawing = false; });
+})();
+
+// ==================== VIEW TOGGLE ====================
+(function() {
+  const btn = document.getElementById('view-toggle-btn');
+  const svgLines = `<svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="4.5" x2="14" y2="4.5"/><line x1="3" y1="8.5" x2="14" y2="8.5"/><line x1="3" y1="12.5" x2="14" y2="12.5"/></svg>`;
+  const svgPencil = `<svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3L14 6L6 14H3V11L11 3Z"/></svg>`;
+  let lpTimer = null, lpFired = false;
+
+  function startLP() {
+    lpFired = false;
+    lpTimer = setTimeout(() => {
+      lpFired = true;
+      if (viewMode === 'canvas') {
+        document.body.classList.toggle('canvas-fullscreen');
+      } else {
+        switchToCanvas(true);
+      }
+    }, 500);
+  }
+  function cancelLP() { clearTimeout(lpTimer); }
+
+  function doShortPress() {
+    if (viewMode === 'text') { switchToCanvas(false); }
+    else { switchToText(); }
+  }
+
+  btn.addEventListener('touchstart', () => startLP(), {passive: true});
+  btn.addEventListener('touchmove', () => cancelLP(), {passive: true});
+  btn.addEventListener('touchend', () => {
+    cancelLP();
+    if (!lpFired) doShortPress();
+  }, {passive: true});
+  btn.addEventListener('mousedown', () => startLP());
+  btn.addEventListener('mousemove', () => cancelLP());
+  btn.addEventListener('mouseup', () => { cancelLP(); if (!lpFired) doShortPress(); });
+
+  function switchToCanvas(fullscreen) {
+    viewMode = 'canvas';
+    document.getElementById('swipe-container').style.display = 'none';
+    document.getElementById('canvas-view').classList.add('active');
+    btn.innerHTML = svgLines;
+    if (fullscreen) document.body.classList.add('canvas-fullscreen');
+    requestAnimationFrame(() => initCanvas(dateToStr(currentDate)));
+  }
+
+  function switchToText() {
+    viewMode = 'text';
+    document.getElementById('canvas-view').classList.remove('active');
+    document.getElementById('swipe-container').style.display = '';
+    document.body.classList.remove('canvas-fullscreen');
+    btn.innerHTML = svgPencil;
+  }
+
+  // Initial icon: show pencil (= "tap to draw")
+  btn.innerHTML = svgPencil;
+})();
+
+// ==================== PROFILE MODAL ====================
+function openProfileModal() {
+  const name = localStorage.getItem('profile_name') || '我的日程本';
+  document.getElementById('profile-name-input').value = name;
+
+  const avatarUrl = localStorage.getItem('profile_avatar') || '';
+  const avatarEl = document.getElementById('profile-avatar-btn');
+  if (avatarUrl) {
+    avatarEl.innerHTML = `<img src="${avatarUrl}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    avatarEl.innerHTML = '<span id="profile-avatar-icon">🙂</span>';
+  }
+
+  const savedTheme = localStorage.getItem('profile_theme') || '#8B6F5E';
+  document.querySelectorAll('#theme-color-swatches .theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === savedTheme);
+  });
+
+  const savedPill = localStorage.getItem('profile_pill') || 'rgba(139,111,94,0.18)';
+  document.querySelectorAll('#pill-color-swatches .theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === savedPill);
+  });
+
+  document.getElementById('profile-title').textContent = lang === 'zh' ? '个人主页' : 'Profile';
+  openModal('profile-modal');
+}
+
+// Called by pill long-press
+function loadProfile() {
+  openProfileModal();
+}
+
+function saveProfile() {
+  const name = document.getElementById('profile-name-input').value.trim() || '我的日程本';
+  localStorage.setItem('profile_name', name);
+  closeModal('profile-modal');
+  showToast(lang === 'zh' ? '已保存' : 'Saved');
+}
+
+function setThemeColor(color, el) {
+  document.querySelectorAll('#theme-color-swatches .theme-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.documentElement.style.setProperty('--brown', color);
+  localStorage.setItem('profile_theme', color);
+}
+
+function setPillColor(el) {
+  document.querySelectorAll('#pill-color-swatches .theme-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const color = el.dataset.color;
+  const pill = document.getElementById('nav-pill');
+  pill.style.backgroundImage = '';
+  document.documentElement.style.setProperty('--pill-bg', color);
+  localStorage.setItem('profile_pill', color);
+  localStorage.removeItem('profile_pill_img');
+}
+
+function handleAvatarChange(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const url = e.target.result;
+    localStorage.setItem('profile_avatar', url);
+    const avatarEl = document.getElementById('profile-avatar-btn');
+    avatarEl.innerHTML = `<img src="${url}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handlePillImgChange(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const url = e.target.result;
+    localStorage.setItem('profile_pill_img', url);
+    const pill = document.getElementById('nav-pill');
+    pill.style.backgroundImage = `url(${url})`;
+    pill.style.backgroundSize = 'cover';
+    pill.style.backgroundPosition = 'center';
+  };
+  reader.readAsDataURL(file);
+}
+
 // ==================== INIT ====================
 processOverdueItems();
+// Apply saved profile preferences (theme/pill colors) without opening modal
+(function applyProfile() {
+  const savedTheme = localStorage.getItem('profile_theme') || '#8B6F5E';
+  document.documentElement.style.setProperty('--brown', savedTheme);
+  const savedPillImg = localStorage.getItem('profile_pill_img');
+  const savedPill = localStorage.getItem('profile_pill') || 'rgba(139,111,94,0.18)';
+  const pill = document.getElementById('nav-pill');
+  if (savedPillImg) {
+    pill.style.backgroundImage = `url(${savedPillImg})`;
+    pill.style.backgroundSize = 'cover';
+    pill.style.backgroundPosition = 'center';
+  } else {
+    document.documentElement.style.setProperty('--pill-bg', savedPill);
+  }
+})();
 renderAll();
 
-// Set initial lang button
-document.getElementById('lang-btn').textContent = lang === 'zh' ? '中/EN' : 'EN/中';
 document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
 
 // Keyboard shortcut: left/right arrow to navigate days
