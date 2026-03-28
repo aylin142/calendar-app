@@ -82,7 +82,7 @@
 
   .day-view {
     position: absolute; top: 0; width: 100%;
-    transition: transform 0.32s cubic-bezier(.4,0,.2,1);
+    will-change: transform;
   }
 
   /* ===== NOTEBOOK LINES ===== */
@@ -179,26 +179,27 @@
   #bottom-bar {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--warm-white); border-top: 1.5px solid var(--line);
-    padding: 8px 20px 20px;
+    padding: 10px 20px 28px;
     display: flex; align-items: center; justify-content: center;
     z-index: 100;
     box-shadow: 0 -2px 12px var(--shadow);
   }
 
-  #ai-btn {
-    background: linear-gradient(135deg, var(--brown), var(--linen));
-    color: white; border: none; border-radius: 24px;
-    padding: 10px 32px; font-size: 14px; font-weight: 600;
-    cursor: pointer; letter-spacing: 0.5px;
+  #nav-pill {
+    width: 72px; height: 42px; border-radius: 21px;
+    background: var(--brown);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
     box-shadow: 0 4px 16px rgba(139,111,94,0.35);
-    transition: transform var(--transition), box-shadow var(--transition), background var(--transition), opacity var(--transition);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    user-select: none; touch-action: none;
+    -webkit-tap-highlight-color: transparent;
   }
-  #ai-btn:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(139,111,94,0.25); }
-  #ai-btn.disabled {
-    background: var(--line); color: var(--text-muted);
-    box-shadow: none; cursor: default; opacity: 0.7;
+  #nav-pill:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(139,111,94,0.2); }
+  #nav-pill-date {
+    font-size: 20px; font-weight: 700; color: white;
+    letter-spacing: -0.5px; line-height: 1; pointer-events: none;
   }
-  #ai-btn.disabled:active { transform: none; box-shadow: none; }
 
   /* ===== MODALS ===== */
   .modal-overlay {
@@ -559,6 +560,35 @@
   .cat-tag.work { color: #8B6F5E; background: rgba(196,168,130,0.2); }
   .cat-tag.life { color: #5A8A5A; background: rgba(127,185,127,0.15); }
   .cat-tag.study { color: #5B7FA6; background: rgba(91,127,166,0.15); }
+
+  /* ===== CALENDAR DATE ICON ===== */
+  #cal-btn {
+    overflow: hidden; padding: 0;
+    background: white; border: 1.5px solid var(--line);
+  }
+  .cal-icon-inner {
+    display: flex; flex-direction: column;
+    align-items: center; width: 100%; height: 100%;
+  }
+  .cal-icon-month {
+    font-size: 7px; font-weight: 800; color: white; letter-spacing: 0.2px;
+    background: var(--red); width: 100%; text-align: center;
+    padding: 2.5px 0; flex-shrink: 0; text-transform: uppercase;
+  }
+  .cal-icon-day {
+    font-size: 17px; font-weight: 700; color: var(--text);
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+
+  /* ===== HIGHLIGHTED CALENDAR DAYS ===== */
+  .cal-day.highlighted { background: var(--brown) !important; color: white !important; font-weight: 700; }
+  .cal-day.highlighted:hover { background: var(--brown) !important; }
+  .mini-cal-day.highlighted { background: var(--brown) !important; color: white !important; border-radius: 3px; }
+
+  /* ===== AI MODAL CORNER SLIDE ===== */
+  #ai-modal .modal-sheet { transform: translateX(4%) translateY(102%); }
+  #ai-modal.open .modal-sheet { transform: translateX(0) translateY(0); }
 </style>
 </head>
 <body>
@@ -571,7 +601,12 @@
   </div>
   <div id="header-right">
     <button class="icon-btn" id="settings-btn" title="Settings">&#9881;</button>
-    <button class="icon-btn" id="cal-btn" title="Calendar">&#128197;</button>
+    <button class="icon-btn" id="cal-btn" title="Calendar">
+      <div class="cal-icon-inner">
+        <div class="cal-icon-month" id="cal-icon-month">MAR</div>
+        <div class="cal-icon-day" id="cal-icon-day">1</div>
+      </div>
+    </button>
     <button class="icon-btn" id="lang-btn">中/EN</button>
   </div>
 </div>
@@ -585,7 +620,9 @@
 
 <!-- BOTTOM BAR -->
 <div id="bottom-bar">
-  <button id="ai-btn">&#10024; AI总结</button>
+  <div id="nav-pill">
+    <span id="nav-pill-date"></span>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -854,6 +891,9 @@ let isPinching = false;
 // Input mode: 'inline' | 'popup'
 let inputMode = localStorage.getItem('planner_input_mode') || 'inline';
 let currentCategory = 'work';
+
+// Highlighted dates in calendar (long-press to mark)
+const highlightedDates = new Set();
 
 // ==================== I18N ====================
 const T = {
@@ -1152,8 +1192,12 @@ function renderPage(container, dateStr) {
     html += renderEmptyRow(dateStr, null, 'after-' + item.id);
   });
 
-  // Always keep extra blank rows at the end
-  const extraRows = Math.max(5, 8 - sortedItems.length);
+  // Dynamically fill visible area
+  const headerH = document.getElementById('app-header').offsetHeight || 60;
+  const bottomH = document.getElementById('bottom-bar').offsetHeight || 80;
+  const visibleRows = Math.ceil((window.innerHeight - headerH - bottomH) / 48) + 2;
+  const renderedRows = sortedItems.length * 2; // each item + its trailing blank row
+  const extraRows = Math.max(3, visibleRows - renderedRows);
   for (let i = 0; i < extraRows; i++) {
     html += renderEmptyRow(dateStr, null, 'end-' + i);
   }
@@ -1228,7 +1272,7 @@ function renderEmptyRow(dateStr, timeHint, key) {
     <div class="row-left-handle" style="color:var(--text-light);font-size:11px;">${timeHint?timeHint.slice(0,5):''}</div>
     <div class="row-time-col"></div>
     <div class="row-content">
-      <span class="row-empty-hint">${timeHint ? '' : t('rowHint')}</span>
+      <span class="row-empty-hint"></span>
     </div>
   </div>`;
 }
@@ -1258,10 +1302,24 @@ function updateHeader() {
   const info = formatDateHeader(currentDate);
   document.getElementById('date-main-text').textContent = info.main;
   document.getElementById('date-sub-text').textContent = info.sub;
-  const aiBtn = document.getElementById('ai-btn');
-  aiBtn.textContent = lang === 'zh' ? '✨ AI总结' : '✨ AI Summary';
-  const hasKey = !!(localStorage.getItem('planner_ai_key') || '').trim();
-  aiBtn.classList.toggle('disabled', !hasKey);
+  updateCalIcon();
+  updateNavPill();
+}
+
+function updateCalIcon() {
+  const monthEl = document.getElementById('cal-icon-month');
+  const dayEl = document.getElementById('cal-icon-day');
+  if (!monthEl || !dayEl) return;
+  const now = new Date();
+  dayEl.textContent = now.getDate();
+  monthEl.textContent = lang === 'zh'
+    ? ['一','二','三','四','五','六','七','八','九','十','十一','十二'][now.getMonth()] + '月'
+    : ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][now.getMonth()];
+}
+
+function updateNavPill() {
+  const el = document.getElementById('nav-pill-date');
+  if (el) el.textContent = new Date().getDate();
 }
 
 // ==================== SWIPE ====================
@@ -1307,7 +1365,16 @@ swipeContainer.addEventListener('touchend', e => {
   const threshold = window.innerWidth * 0.3;
   if (dx < -threshold) { navigateDay(1); }
   else if (dx > threshold) { navigateDay(-1); }
-  else { positionPages(0); }
+  else {
+    const allPages = [
+      document.getElementById('page-prev'),
+      document.getElementById('page-cur'),
+      document.getElementById('page-next')
+    ];
+    allPages.forEach(p => { p.style.transition = 'transform 0.28s ease-in-out'; });
+    positionPages(0);
+    setTimeout(() => allPages.forEach(p => { p.style.transition = ''; }), 290);
+  }
   isSwiping = false;
 }, {passive: true});
 
@@ -1327,7 +1394,7 @@ function navigateDay(delta) {
   ];
   const targets = delta > 0 ? [-2*w, -w, 0] : [0, w, 2*w];
   pages.forEach((p,i) => {
-    p.style.transition = 'transform 0.28s cubic-bezier(.4,0,.2,1)';
+    p.style.transition = 'transform 0.28s ease-in-out';
     p.style.transform = `translateX(${targets[i]}px)`;
   });
   setTimeout(() => {
@@ -1438,6 +1505,18 @@ function handleInlineEmptyClick(event, dateStr, timeHint) {
   input.addEventListener('blur', save);
 }
 
+function removeOverdueCopies(originId, fromDateStr) {
+  const data = loadData();
+  let changed = false;
+  Object.keys(data).forEach(ds => {
+    if (ds <= fromDateStr) return;
+    const before = (data[ds] || []).length;
+    data[ds] = (data[ds] || []).filter(i => i.origin_id !== originId);
+    if (data[ds].length !== before) changed = true;
+  });
+  if (changed) saveData(data);
+}
+
 function toggleDone(event, id, dateStr) {
   event.stopPropagation();
   const items = getItemsForDate(dateStr);
@@ -1445,6 +1524,7 @@ function toggleDone(event, id, dateStr) {
   if (!item) return;
   item.done = !item.done;
   setItemsForDate(dateStr, items);
+  if (item.done) removeOverdueCopies(id, dateStr);
   renderAll();
 }
 
@@ -1485,7 +1565,12 @@ function toggleDoneCtx(id, dateStr) {
   closeContextMenu();
   const items = getItemsForDate(dateStr);
   const item = items.find(i => i.id === id);
-  if (item) { item.done = !item.done; setItemsForDate(dateStr, items); renderAll(); }
+  if (item) {
+    item.done = !item.done;
+    setItemsForDate(dateStr, items);
+    if (item.done) removeOverdueCopies(id, dateStr);
+    renderAll();
+  }
 }
 function deleteItemCtx(id, dateStr) {
   closeContextMenu();
@@ -1741,13 +1826,31 @@ function renderCalModal() {
     // Bind year nav
     body.querySelector('#year-prev-btn').onclick = () => { yearViewYear--; renderCalModal(); };
     body.querySelector('#year-next-btn').onclick = () => { yearViewYear++; renderCalModal(); };
-    // Click on mini month
+    // Click on mini month header → go to month view
     body.querySelectorAll('.mini-month').forEach(el => {
       el.addEventListener('click', () => {
         calViewYear = yearViewYear;
         calViewMonth = parseInt(el.dataset.month);
         showingYearView = false;
         renderCalModal();
+      });
+    });
+    // Click/long-press on individual mini day
+    body.querySelectorAll('.mini-cal-day[data-date]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const ds = el.dataset.date;
+        currentDate = strToDate(ds);
+        closeModal('cal-modal');
+        renderAll();
+      });
+      bindLongPress(el, () => {
+        const ds = el.dataset.date;
+        if (highlightedDates.has(ds)) {
+          highlightedDates.delete(ds); el.classList.remove('highlighted');
+        } else {
+          highlightedDates.add(ds); el.classList.add('highlighted');
+        }
       });
     });
   } else {
@@ -1772,13 +1875,21 @@ function renderCalModal() {
         renderCalModal();
       });
     });
-    // Click days
+    // Click = navigate; long press = highlight
     body.querySelectorAll('.cal-day[data-date]').forEach(el => {
       el.addEventListener('click', () => {
         const ds = el.dataset.date;
         currentDate = strToDate(ds);
         closeModal('cal-modal');
         renderAll();
+      });
+      bindLongPress(el, () => {
+        const ds = el.dataset.date;
+        if (highlightedDates.has(ds)) {
+          highlightedDates.delete(ds); el.classList.remove('highlighted');
+        } else {
+          highlightedDates.add(ds); el.classList.add('highlighted');
+        }
       });
     });
   }
@@ -1815,8 +1926,9 @@ function renderMonthView(year, month) {
     const count = (data[ds] || []).length;
     const isToday = ds === td ? ' today' : '';
     const isSel = ds === selectedDs && !isToday ? ' selected' : '';
+    const isHL = highlightedDates.has(ds) && !isToday ? ' highlighted' : '';
     const dotHtml = count > 0 ? `<div class="dot-count">${count > 9 ? '9+' : '&#183;'.repeat(Math.min(count,3))}</div>` : '';
-    html += `<div class="cal-day${isToday}${isSel}" data-date="${ds}"><span>${d}</span>${dotHtml}</div>`;
+    html += `<div class="cal-day${isToday}${isSel}${isHL}" data-date="${ds}"><span>${d}</span>${dotHtml}</div>`;
   }
 
   // Fill remaining cells
@@ -1859,7 +1971,8 @@ function renderYearView() {
       const isToday = ds === td ? ' today' : '';
       const data = loadData();
       const hasEv = (data[ds]||[]).length > 0 ? ' has-events' : '';
-      html += `<div class="mini-cal-day${isToday}${hasEv}">${d}</div>`;
+      const isHL = highlightedDates.has(ds) && !isToday ? ' highlighted' : '';
+      html += `<div class="mini-cal-day${isToday}${hasEv}${isHL}" data-date="${ds}">${d}</div>`;
     }
     html += '</div></div>';
   }
@@ -1996,7 +2109,7 @@ function confirmMonthWheel() {
 }
 
 // ==================== AI SUMMARY ====================
-document.getElementById('ai-btn').addEventListener('click', () => {
+function openAIModal() {
   const hasKey = !!(localStorage.getItem('planner_ai_key') || '').trim();
   if (!hasKey) {
     showToast(t('noApiKeySettings'));
@@ -2005,7 +2118,6 @@ document.getElementById('ai-btn').addEventListener('click', () => {
   document.getElementById('ai-result-group').style.display = 'none';
   document.getElementById('ai-result-text').textContent = '';
 
-  // Set default date range
   const now = new Date();
   const fromDate = new Date(now); fromDate.setDate(now.getDate()-now.getDay());
   const toDate = new Date(fromDate); toDate.setDate(fromDate.getDate()+6);
@@ -2031,7 +2143,7 @@ document.getElementById('ai-btn').addEventListener('click', () => {
   document.getElementById('ai-custom-range').style.display = 'none';
 
   openModal('ai-modal');
-});
+}
 
 async function runAISummary() {
   const apiKey = (localStorage.getItem('planner_ai_key') || '').trim();
@@ -2193,6 +2305,87 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
+
+// ==================== GO TO TODAY ====================
+function goToToday() {
+  currentDate = new Date(today);
+  renderAll();
+  showToast(lang === 'zh' ? '已回到今天' : 'Back to today');
+}
+
+// ==================== NAV PILL ====================
+(function() {
+  const pill = document.getElementById('nav-pill');
+  let startX = 0, hasSwiped = false, lastTouchTime = 0;
+
+  // Touch handlers
+  pill.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    hasSwiped = false;
+    pill.style.transition = 'none';
+  }, {passive: true});
+
+  pill.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    if (Math.abs(dx) > 8) {
+      hasSwiped = true;
+      const shift = Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, 22);
+      pill.style.transform = `translateX(${shift}px) scale(0.95)`;
+    }
+  }, {passive: true});
+
+  pill.addEventListener('touchend', e => {
+    lastTouchTime = Date.now();
+    pill.style.transition = '';
+    pill.style.transform = '';
+    const dx = e.changedTouches[0].clientX - startX;
+    if (!hasSwiped || Math.abs(dx) < 10) {
+      goToToday();
+    } else if (dx < -40) {
+      goToToday();
+    } else if (dx > 40) {
+      openAIModal();
+    }
+    hasSwiped = false;
+  }, {passive: true});
+
+  // Mouse handlers (desktop)
+  let mStartX = 0, mDragging = false;
+  pill.addEventListener('mousedown', e => {
+    mStartX = e.clientX; mDragging = false;
+    pill.style.transition = 'none';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!mStartX) return;
+    const dx = e.clientX - mStartX;
+    if (Math.abs(dx) > 8) {
+      mDragging = true;
+      const shift = Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, 22);
+      pill.style.transform = `translateX(${shift}px) scale(0.95)`;
+    }
+  });
+  window.addEventListener('mouseup', e => {
+    if (!mStartX) return;
+    pill.style.transition = '';
+    pill.style.transform = '';
+    const dx = e.clientX - mStartX;
+    if (!mDragging || Math.abs(dx) < 10) {
+      goToToday();
+    } else if (dx < -40) {
+      goToToday();
+    } else if (dx > 40) {
+      openAIModal();
+    }
+    mStartX = 0; mDragging = false;
+  });
+
+  // Prevent ghost click after touch
+  pill.addEventListener('click', e => {
+    if (Date.now() - lastTouchTime < 400) return;
+    goToToday();
+  });
+})();
 
 // ==================== INIT ====================
 processOverdueItems();
